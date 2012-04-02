@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+              http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	version="2.5" xmlns="http://java.sun.com/xml/ns/javaee">
+
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>/WEB-INF/spring.xml</param-value>
+	</context-param>
+
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+
+	<servlet>
+		<servlet-name>GULSpringServlet</servlet-name>
+		<servlet-class>org.gk.servlet.GULSpringServlet</servlet-class>
+	</servlet>
+	
+	<servlet>
+		<servlet-name>GULPageServlet</servlet-name>
+		<servlet-class>org.gk.servlet.GULPageServlet</servlet-class>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>GULSpringServlet</servlet-name>
+		<url-pattern>*.go</url-pattern>
+	</servlet-mapping>
+	
+	<servlet-mapping>
+		<servlet-name>GULPageServlet</servlet-name>
+		<url-pattern>*.gul</url-pattern>
+	</servlet-mapping>
+
+</web-app>
