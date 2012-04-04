@@ -82,17 +82,6 @@ import com.google.gwt.xml.client.NodeList;
 public class Engine implements IEngine, INodeProvider {
 
 	static {
-		// 當這為true時，pageToolbar image出不來 (路徑不對)
-		// 這boolean是在GXT.java初始化根據瀏覽器放div的效果決定的，
-		// 但問題出在有時是true,有時是false
-		/**
-		 * <pre>
-		 * GXT 程式碼Initializes GXT時調用
-		 *  if ("none".equals(XDOM.getComputedStyle(div,"backgroundImage"))) { 
-		 *  isHighContrastMode = true;
-		 * XDOM.getBodyEl().addStyleName("x-contrast"); }
-		 * </pre>
-		 */
 		GXT.isHighContrastMode = false;
 		GXT.setAutoIdPrefix("gk");
 	}
