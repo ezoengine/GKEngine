@@ -1,0 +1,31 @@
+<page>
+  <form width='400' heading='輸入股票代號' id='form'>
+    <formRow widthRate='70%,15%,15%'>
+      <field type='txt' name='num'  label='股票代號' id='i' maxLength='4' />
+      <field type='btn' label='新增' onclick='com:form:grid.add,com:"":i' />
+    <field type='btn' label='刷新' onclick='js:update' />
+    </formRow>
+  </form>
+  <grid id='grid' heading='股票清單' width='400' borders='true'>
+    <field type='label' name='num'    label='代號' />
+    <field type='label' name='name'   label='名稱' />
+    <field type='label' name='price'  label='價格'  />
+    <field type='label' name='change' label='漲 / 跌'  />
+    <field type='label' name='time' label='更新時間'  />
+  </grid>
+  <js id='update'><![CDATA[
+    var list = gk.get('grid');
+    $.each(list,function(idx,value){
+      $.getJSON('/tryit/stockInfo.jsp?id='+ value.num, 
+		function(data) {
+		  var p = "<div style='color:green'>",e = "<div style='color:red'>";
+		  var s = parseFloat(data[1])<0 ? p:e;
+		  list[idx].name = data[36];
+		  list[idx].price = s+data[8];
+		  list[idx].change = s+data[1];
+		  list[idx].time = data[2];
+		  gk.set('grid',list);
+		});
+    });
+    ]]></js>
+</page>

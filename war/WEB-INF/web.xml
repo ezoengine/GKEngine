@@ -17,20 +17,10 @@
 		<servlet-name>GULSpringServlet</servlet-name>
 		<servlet-class>org.gk.servlet.GULSpringServlet</servlet-class>
 	</servlet>
-	
-	<servlet>
-		<servlet-name>GULPageServlet</servlet-name>
-		<servlet-class>org.gk.servlet.GULPageServlet</servlet-class>
-	</servlet>
 
 	<servlet-mapping>
 		<servlet-name>GULSpringServlet</servlet-name>
 		<url-pattern>*.go</url-pattern>
-	</servlet-mapping>
-	
-	<servlet-mapping>
-		<servlet-name>GULPageServlet</servlet-name>
-		<url-pattern>*.gul</url-pattern>
 	</servlet-mapping>
 
 </web-app>
