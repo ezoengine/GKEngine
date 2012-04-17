@@ -1,7 +1,5 @@
 package org.gk.servlet;
 
-import javax.servlet.ServletException;
-
 import jfreecode.gwt.event.server.EventCenterServlet;
 import jfreecode.gwt.event.server.bus.EventStore;
 import jfreecode.gwt.event.server.invoke.InvokeIfc;
@@ -10,21 +8,9 @@ import jfreecode.gwt.event.server.invoke.exception.InvalidEventIdException;
 import jfreecode.gwt.event.server.invoke.exception.SpringBeanNotFoundException;
 import jfreecode.spring.context.WebSpringContext;
 
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-
 public class GULSpringServlet extends EventCenterServlet {
 	private static final long serialVersionUID = 1L;
-	private WebApplicationContext springContext;
 	private final InvokeIfc invoke = new InvokeSpringBean();
-
-	@Override
-	public void init() throws ServletException {
-		super.init();
-		springContext = WebApplicationContextUtils
-				.getWebApplicationContext(getServletContext());
-		WebSpringContext.setSpringContext(springContext);
-	}
 
 	/**
 	 * <pre>
@@ -50,12 +36,13 @@ public class GULSpringServlet extends EventCenterServlet {
 		String beanName = beanProperty[0];
 		String beanMethod = beanProperty[1];
 		checkSpringBeanExist(beanName, beanMethod);
-		Object springBean = springContext.getBean(beanName);
+		Object springBean = WebSpringContext.getApplicationContext().getBean(
+				beanName);
 		invoke.execute(springBean, beanMethod);
 	}
 
 	protected void checkSpringBeanExist(String beanName, String beanMethod) {
-		if (!springContext.containsBean(beanName)) {
+		if (!WebSpringContext.getApplicationContext().containsBean(beanName)) {
 			throw new SpringBeanNotFoundException("beanName:" + beanName
 					+ ",beanMethod:" + beanMethod);
 		}

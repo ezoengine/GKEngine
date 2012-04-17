@@ -1,22 +1,22 @@
 <page>
-  <form width='400' heading='¿é¤JªÑ²¼¥N¸¹' id='form'>
+  <form width='400' heading='è¼¸å…¥è‚¡ç¥¨ä»£è™Ÿ' id='form'>
     <formRow widthRate='70%,15%,15%'>
-      <field type='txt' name='num'  label='ªÑ²¼¥N¸¹' id='i' maxLength='4' />
-      <field type='btn' label='·s¼W' onclick='com:form:grid.add,com:"":i' />
-    <field type='btn' label='¨ê·s' onclick='js:update' />
+      <field type='txt' name='num'  label='è‚¡ç¥¨ä»£è™Ÿ' id='i' maxLength='4' />
+      <field type='btn' label='æ–°å¢' onclick='com:form:grid.add,com:"":i' />
+    <field type='btn' label='åˆ·æ–°' onclick='js:update' />
     </formRow>
   </form>
-  <grid id='grid' heading='ªÑ²¼²M³æ' width='400' borders='true'>
-    <field type='label' name='num'    label='¥N¸¹' />
-    <field type='label' name='name'   label='¦WºÙ' />
-    <field type='label' name='price'  label='»ù®æ'  />
-    <field type='label' name='change' label='º¦ / ¶^'  />
-    <field type='label' name='time' label='§ó·s®É¶¡'  />
+  <grid id='grid' heading='è‚¡ç¥¨æ¸…å–®' width='400' borders='true'>
+    <field type='label' name='num'    label='ä»£è™Ÿ' />
+    <field type='label' name='name'   label='åç¨±' />
+    <field type='label' name='price'  label='åƒ¹æ ¼'  />
+    <field type='label' name='change' label='æ¼² / è·Œ'  />
+    <field type='label' name='time' label='æ›´æ–°æ™‚é–“'  />
   </grid>
   <js id='update'><![CDATA[
     var list = gk.get('grid');
     $.each(list,function(idx,value){
-      $.getJSON('/tryit/stockInfo.jsp?id='+ value.num, 
+      $.getJSON('/demo/stockInfo.jsp?id='+ value.num, 
 		function(data) {
 		  var p = "<div style='color:green'>",e = "<div style='color:red'>";
 		  var s = parseFloat(data[1])<0 ? p:e;

@@ -17,9 +17,9 @@
 package org.gk.engine.client.utils;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import jfreecode.gwt.event.client.bus.EventObject;
 import jfreecode.gwt.event.client.bus.EventProcess;
@@ -28,22 +28,22 @@ import jfreecode.gwt.event.client.bus.obj.Info;
 
 import org.gk.engine.client.Engine;
 import org.gk.engine.client.IEngine;
-import org.gk.engine.client.exception.LibraryNotFoundException;
-import org.gk.engine.client.i18n.EngineMessages;
 import org.gk.engine.client.logging.EngineLogger;
 import org.gk.ui.client.gkComponent;
 
 import com.extjs.gxt.ui.client.core.FastMap;
+import com.extjs.gxt.ui.client.core.FastSet;
 import com.extjs.gxt.ui.client.core.XDOM;
+import com.extjs.gxt.ui.client.js.JsUtil;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.http.client.Request;
 import com.google.gwt.http.client.RequestBuilder;
 import com.google.gwt.http.client.RequestCallback;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.http.client.URL;
-import com.google.gwt.json.client.JSONArray;
 import com.google.gwt.xml.client.Document;
 import com.google.gwt.xml.client.Element;
 import com.google.gwt.xml.client.NamedNodeMap;
@@ -63,6 +63,7 @@ import com.google.gwt.xml.client.NodeList;
  * </pre>
  * 
  * @author I21890
+ * @since 2011/4/19
  */
 public class ComLibrary {
 
@@ -106,6 +107,28 @@ public class ComLibrary {
 	}
 
 	/**
+	 * 取得元件庫元件所有自定義的屬性清單(${...})
+	 * 
+	 * @param nodeName
+	 * @return JavaScriptObject
+	 */
+	public static JavaScriptObject getLibraryAttributes(String nodeName) {
+		String gul = getContent(nodeName);
+		JsArrayString list = (JsArrayString) findReplaceAttributes(gul);
+		Set libAttr = new FastSet();
+		for (int i = 0; i < list.length(); i++) {
+			String el = replaceToEL(list.get(i));
+			if (matchELPattern(el)) {
+				String key = retriveELParameter(el).trim();
+				libAttr.add(key);
+			} else {
+				libAttr.add(el);
+			}
+		}
+		return JsUtil.toJavaScriptArray(libAttr.toArray());
+	}
+
+	/**
 	 * 建立屬性對照表
 	 * 
 	 * @param node
@@ -113,39 +136,35 @@ public class ComLibrary {
 	 * @return Map
 	 */
 	private static Map createMappingTable(Node node, String gul) {
-		Map attrMap = new FastMap();
-		// node 宣告傳入變數的值
+		Map<String, String> nodeAttr = new FastMap();
+		// 從node中取得屬性Map
 		NamedNodeMap map = node.getAttributes();
 		for (int index = 0; index < map.getLength(); index++) {
 			Node attrNode = map.item(index);
-			attrMap.put("${" + attrNode.getNodeName() + "}",
+			nodeAttr.put("${" + attrNode.getNodeName() + "}",
 					attrNode.getNodeValue());
 		}
-		// 元件庫入gul變數
-		List<String> list = JsonConvert.jsonToList(new JSONArray(
-				findReplaceAttributes(gul)));
-		for (int index = 0; index < list.size(); index++) {
-			String attr = list.get(index);
-			// 取出ExpressionLanguage中實際變數名稱
-			String nodeKey = "${" + retriveELParameter(attr) + "}";
-			if (!attrMap.containsKey(attr)) {
-				// 使用EL判斷式時，變數值為空值
-				if (!attr.equals(nodeKey)) {
-					attrMap.put(attr, "");
+		// 從元件庫中取得屬性Map
+		JsArrayString list = (JsArrayString) findReplaceAttributes(gul);
+		Map<String, String> libAttr = new FastMap();
+		for (int i = 0; i < list.length(); i++) {
+			String attr = list.get(i);
+			if (!libAttr.containsKey(attr)) {
+				String el = replaceToEL(attr);
+				if (matchELPattern(el)) {
+					String key = retriveELParameter(el).trim();
+					String value = nodeAttr.get("${" + key + "}");
+					libAttr.put(attr,
+							execEL(el, key, value == null ? "" : value));
 				} else {
-					attrMap.put(attr, XDOM.getUniqueId());
-				}
-			}
-
-			if (!attr.equals(nodeKey) && attrMap.containsKey(nodeKey)) {
-				String nodeKeyVal = "" + attrMap.get(nodeKey);
-				// TODO
-				if (!nodeKeyVal.startsWith("gk")) {
-					attrMap.put(attr, attrMap.get(nodeKey));
+					if (!nodeAttr.containsKey(attr)) {
+						libAttr.put(attr, XDOM.getUniqueId());
+					}
 				}
 			}
 		}
-		return attrMap;
+		nodeAttr.putAll(libAttr);
+		return nodeAttr;
 	}
 
 	/**
@@ -156,78 +175,50 @@ public class ComLibrary {
 	 * @return NodeList
 	 */
 	public static NodeList replaceNode(String nodeName, Node originNode) {
-		String gul = library.get(nodeName);
-		return replaceNode(nodeName, originNode, gul);
+		String gul = getContent(nodeName);
+		return replaceNode(originNode, gul);
 	}
 
-	public static NodeList replaceNode(String nodeName, Node originNode,
-			String gul) {
+	public static NodeList replaceNode(Node originNode, String gul) {
 		gul = Engine.beforeParser(gul);
 		Map mapping = createMappingTable(originNode, gul);
-		String value = "";
 		for (Iterator it = mapping.entrySet().iterator(); it.hasNext();) {
 			Entry<String, String> entry = (Entry) it.next();
-			value = execEL(entry.getKey(), entry.getValue());
-			gul = gul.replace(entry.getKey(), value);
+			gul = gul.replace(entry.getKey(), entry.getValue());
 		}
 		Document doc = NodeUtils.parseGUL(gul);
 		return doc.getFirstChild().getChildNodes();
 	}
 
 	/**
-	 * 取得Expression Language 的變數名稱 ${val1==''?'':val1} 取得 val1
+	 * 取得Expression Language 的變數名稱，如 ${val1==''?'':val1} 取得 val1
 	 * 
-	 * @param elTag
+	 * @param el
 	 * @return String
 	 */
-	private static native String retriveELParameter(String elTag)/*-{
-		elTag = @org.gk.engine.client.utils.ComLibrary::replaceTag(Ljava/lang/String;)(elTag);
-		var para = elTag;
-		var isELPattern = @org.gk.engine.client.utils.ComLibrary::matchELPattern(Ljava/lang/String;)(elTag);
-		//若不是EL(例如:${value=='?'':value} )表示式，則以原始的變數傳回(${value})
-		if (isELPattern) {
-			var el = elTag.split("?", 2);
-			var expression = el[0];
-			//取出變數,例如: ${value=='?'':value} 則取得 value
-			para = expression.substring(0, expression
-					.search(/(={2}|\!=|\>|\<|\>\=|\<\=)/i));
-		}
-		return para.replace(/\s\s*$/, '');
-		;
+	private static native String retriveELParameter(String el)/*-{
+		return el.substring(0, el.search(/(\==|\!=|\>|\<|\>=|\<=)/i));
 	}-*/;
 
 	/**
 	 * 判斷是否符合EL寫法的regExp
 	 * 
-	 * @param elTag
+	 * @param el
 	 * @return boolean
 	 */
-	private static native boolean matchELPattern(String elTag)/*-{
+	private static native boolean matchELPattern(String el)/*-{
 		var reg = /(\w*|\W*)(={2}|\!=|\>|\<|\>\=|\<\=)(\s*)(\'\w*\'|\w*|\'\W*\'|\W*)(\s*)(\?)/i;
-		return elTag.match(reg) != null;
+		return el.match(reg) != null;
 	}-*/;
 
-	private static native String replaceTag(String elTag)/*-{
-		elTag = elTag.replace("${", "");
-		elTag = elTag.replace("}", "");
-		elTag = elTag.replace("&lt;", "<");
-		return elTag;
-	}-*/;
+	private static String replaceToEL(String el) {
+		return el.replaceAll("\\$\\{|\\}", "").replaceAll("&lt;", "<");
+	}
 
-	private static native String execEL(String elTag, String val)/*-{
-		elTag = @org.gk.engine.client.utils.ComLibrary::replaceTag(Ljava/lang/String;)(elTag);
-		var isELPattern = @org.gk.engine.client.utils.ComLibrary::matchELPattern(Ljava/lang/String;)(elTag);
-		if (isELPattern) {
-			var para = @org.gk.engine.client.utils.ComLibrary::retriveELParameter(Ljava/lang/String;)(elTag);
-			//動態產生變數
-			//$wnd.eval("var " + para + "='" + val + "'");
-			while (elTag.indexOf(para) != -1) {
-				elTag = elTag.replace(para, "'" + val + "'");
-			}
-			return $wnd.eval(elTag);
-		} else {
-			return val;
-		}
+	private static native String execEL(String el, String key, String value)/*-{
+		var regular = new RegExp(key, "g");
+		el = el.replace(regular, "'" + value + "'");
+		return $wnd.eval(el);
 	}-*/;
 
 	/**
@@ -238,22 +229,26 @@ public class ComLibrary {
 	 */
 	private static native JavaScriptObject findReplaceAttributes(String gul)/*-{
 		var replaces = [];
-		var split = gul.split(/(?=\$)|\'|\"/);
-		for (i = 0; i < split.length; i++) {
-			// 符合「${...}」才放入Array
-			if (split[i].match(/\$\{.*\}$/) != null) {
-				replaces.push(split[i]);
-			}
-		}
-		//取出gul中變數寫法是使用EL
-		var splitEL = gul.split(/=\"|\"/);
+		// 使用「="」、「"」、「$」做第一次的分割
+		var splitEL = gul.split(/=\"|\"|(?=\$)/);
 		for (i = 0; i < splitEL.length; i++) {
+			// 去掉前後空白
+			var mapper = splitEL[i].replace(/^\s*|\s*$/g, '');
 			// 符合「${...}」才放入Array
-			if (splitEL[i].match(/\$\{.*\}$/) != null) {
-				replaces.push(splitEL[i]);
+			if (mapper.match(/\$\{.*\}$/) != null) {
+				replaces.push(mapper);
 			}
 		}
-
+		// 再使用「='」、「'」、「$」做第二次的分割
+		splitEL = gul.split(/='|'|(?=\$)/);
+		for (i = 0; i < splitEL.length; i++) {
+			// 去掉前後空白
+			var mapper = splitEL[i].replace(/^\s*|\s*$/g, '');
+			// 符合「${...}」才放入Array
+			if (mapper.match(/\$\{.*\}$/) != null) {
+				replaces.push(mapper);
+			}
+		}
 		return replaces;
 	}-*/;
 
@@ -413,13 +408,6 @@ public class ComLibrary {
 		// 元件庫找不到則不使用override
 		if (libgul.equals("") || libgul.equals("undefined")) {
 			return node;
-		}
-		// 元件庫找不到拋出例外
-		if (!strOverride.equals("true") && !strOverride.equals("")) {
-			if (null == libgul) {
-				throw new LibraryNotFoundException(
-						EngineMessages.msg.error_libraryNotFound(strOverride));
-			}
 		}
 		// 更新每個元件的Override屬性
 		node = updateOverrideAttr(libgul, node);

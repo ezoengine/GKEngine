@@ -2,5 +2,13 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+	
+	<!-- 設定 contenxt Path -->
+	<bean id="springContext" class="jfreecode.spring.context.WebSpringContext">
+		<property name='root' value='.' />
+		<property name="webDirPath" value='' />
+		<property name='comLibPath' value='/html/gwt/lib/component.lib'/>
+	</bean>	
+	
 	<bean id='test' class='test.Case' />
 </beans> 

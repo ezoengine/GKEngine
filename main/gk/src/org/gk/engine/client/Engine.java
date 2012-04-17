@@ -46,12 +46,14 @@ import org.gk.ui.client.com.form.gkList;
 import org.gk.ui.client.com.form.gkMap;
 
 import com.extjs.gxt.ui.client.GXT;
+import com.extjs.gxt.ui.client.core.DomQuery;
 import com.extjs.gxt.ui.client.core.XDOM;
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.extjs.gxt.ui.client.widget.Component;
 import com.extjs.gxt.ui.client.widget.Container;
 import com.extjs.gxt.ui.client.widget.LayoutContainer;
 import com.extjs.gxt.ui.client.widget.Window;
+import com.extjs.gxt.ui.client.widget.form.AdapterField;
 import com.extjs.gxt.ui.client.widget.grid.ColumnConfig;
 import com.extjs.gxt.ui.client.widget.grid.ColumnModel;
 import com.extjs.gxt.ui.client.widget.grid.Grid;
@@ -61,6 +63,7 @@ import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.RunAsyncCallback;
 import com.google.gwt.user.client.Cookies;
 import com.google.gwt.user.client.DOM;
+import com.google.gwt.user.client.Element;
 import com.google.gwt.xml.client.Document;
 import com.google.gwt.xml.client.Node;
 import com.google.gwt.xml.client.NodeList;
@@ -82,6 +85,17 @@ import com.google.gwt.xml.client.NodeList;
 public class Engine implements IEngine, INodeProvider {
 
 	static {
+		// 當這為true時，pageToolbar image出不來 (路徑不對)
+		// 這boolean是在GXT.java初始化根據瀏覽器放div的效果決定的，
+		// 但問題出在有時是true,有時是false
+		/**
+		 * <pre>
+		 * GXT 程式碼Initializes GXT時調用
+		 *  if ("none".equals(XDOM.getComputedStyle(div,"backgroundImage"))) { 
+		 *  isHighContrastMode = true;
+		 * XDOM.getBodyEl().addStyleName("x-contrast"); }
+		 * </pre>
+		 */
 		GXT.isHighContrastMode = false;
 		GXT.setAutoIdPrefix("gk");
 	}
@@ -177,7 +191,7 @@ public class Engine implements IEngine, INodeProvider {
 	public native void hookJSMethod()/*-{
 		$wnd.gk = new Object();
 		$wnd.gk.set = function(id, value) {
-			//判断元素是否为 array 原本的value instanceof $wnd.Array 貌似会判断不出来
+			// 判斷元素是否為 array 原本的value instanceof $wnd.Array 貌似會判斷不出來
 			var isArray = Object.prototype.toString.apply(value) === '[object Array]';
 			var isObject = typeof (value) == 'object';
 			if (isArray || isObject) {
@@ -277,6 +291,9 @@ public class Engine implements IEngine, INodeProvider {
 			} else if (numargs == 2) {
 				@org.gk.engine.client.Engine::setCookie(Ljava/lang/String;Ljava/lang/String;)(name, value);
 			}
+		}
+		$wnd.gk.libraryAttributes = function(name) {
+			return @org.gk.engine.client.utils.ComLibrary::getLibraryAttributes(Ljava/lang/String;)(name);
 		}
 	}-*/;
 
@@ -456,13 +473,46 @@ public class Engine implements IEngine, INodeProvider {
 			clearBackup();
 			// 改回原Bus名稱
 			EventBus.setDefaultName(outsideBusName);
-			// 每次render結束後，插上log以觀察是否有記憶體洩漏的狀況
-			EngineLogger.console(EventBus.getEventBusList());
+			// 每次render結束後，插上log以觀察是否有記憶體洩漏的狀況，並檢查資料的一致性
+			check();
+		}
+	}
+
+	private void check() {
+		// 每次render結束後，插上log以觀察是否有記憶體洩漏的狀況
+		EngineLogger.console(EventBus.getEventBusList());
+		EngineLogger.console("Nodes:" + EngineDataStore.getUIGenNodeMapSize());
+		EngineLogger.console("Components:"
+				+ EngineDataStore.getComponentMapSize());
+		EngineLogger.console("renderPanelCom:" + renderPanelCom.size());
+
+		// 檢查資料是否一致
+		int uiGenNodeSize = EngineDataStore.getUIGenNodeMapSize();
+		int rpComSize = 0;
+		Set key = renderPanelCom.keySet();
+		Iterator it = key.iterator();
+		while (it.hasNext()) {
+			String ke = it.next().toString() + "";
+			Set map = (Set) renderPanelCom.get(ke);
+			rpComSize += map.size();
+		}
+		if (uiGenNodeSize != rpComSize) {
+			EngineLogger.log(new Throwable("Engine資料不一致！"));
+			EngineLogger.console("Engine資料不一致！");
 			EngineLogger.console("Nodes:"
 					+ EngineDataStore.getUIGenNodeMapSize());
+			EngineLogger.console("Nodes:" + EngineDataStore.getUIGenNodeMap());
 			EngineLogger.console("Components:"
 					+ EngineDataStore.getComponentMapSize());
-			EngineLogger.console("renderPanelCom:" + renderPanelCom.size());
+			EngineLogger.console("Components:"
+					+ EngineDataStore.getComponentMap());
+			it = key.iterator();
+			while (it.hasNext()) {
+				String ke = it.next().toString() + "";
+				Set map = (Set) renderPanelCom.get(ke);
+				EngineLogger.console("renderPanelCom-" + ke + ":" + map.size());
+				EngineLogger.console(ke + ":" + map);
+			}
 		}
 	}
 
@@ -501,24 +551,52 @@ public class Engine implements IEngine, INodeProvider {
 	 * @param containerId
 	 */
 	public void removeRenderPanelComponent(String containerId) {
-		this.renderPanelCom.remove(containerId);
+		renderPanelCom.remove(containerId);
 	}
 
 	private void removeAllComponent(Container layoutContainer) {
-		Iterator<Component> comIt = layoutContainer.getItems().iterator();
-		while (comIt.hasNext()) {
-			Component com = comIt.next();
+		// 依gxt容器內部資料做清除動作
+		Iterator<Component> componentIt = layoutContainer.getItems().iterator();
+		while (componentIt.hasNext()) {
+			Component com = componentIt.next();
 			if (com instanceof Container) {
 				removeAllComponent((Container) com);
 			} else if (com instanceof Grid) {
 				removeColumnModel((Grid) com);
+			} else if (com instanceof AdapterField) {
+				removeAdaptWidget((AdapterField) com);
 			}
-			this.removeComponent(com.getId());
+			removeComponent(com.getId());
+			removeRenderPanelComById(com.getId());
 		}
-		this.renderPanelCom.remove(layoutContainer.getId());
-
+		// 依renderPanelCom內的資料做清除動作
+		removeRenderPanelCom(layoutContainer.getId());
 		// 將面板清空
 		layoutContainer.removeAll();
+	}
+
+	private void removeRenderPanelCom(String containerId) {
+		if (renderPanelCom.get(containerId) == null) {
+			return;
+		}
+		Iterator<String> comIt = renderPanelCom.get(containerId).iterator();
+		while (comIt.hasNext()) {
+			removeComponent(comIt.next());
+		}
+		renderPanelCom.remove(containerId);
+	}
+
+	private void removeRenderPanelComById(String id) {
+		Set key = renderPanelCom.keySet();
+		Iterator it = key.iterator();
+		while (it.hasNext()) {
+			String ke = it.next().toString() + "";
+			Set set = (Set) renderPanelCom.get(ke);
+			if (set.contains(id)) {
+				set.remove(id);
+				return;
+			}
+		}
 	}
 
 	/**
@@ -530,7 +608,29 @@ public class Engine implements IEngine, INodeProvider {
 		ColumnModel cm = grid.getColumnModel();
 		Iterator<ColumnConfig> columnIt = cm.getColumns().iterator();
 		while (columnIt.hasNext()) {
-			this.removeComponent(columnIt.next().getId());
+			String id = columnIt.next().getId();
+			removeComponent(id);
+			removeRenderPanelComById(id);
+		}
+		// 透過DomQuery，找到grid內，自訂id_rowIndex的元件，並清除
+		com.google.gwt.dom.client.NodeList<Element> nodes = DomQuery.select(
+				"*[id*=_]", grid.getElement());
+		for (int i = 0; i < nodes.getLength(); i++) {
+			Element ele = nodes.getItem(i);
+			removeComponent(ele.getId());
+			removeRenderPanelComById(ele.getId());
+		}
+	}
+
+	/**
+	 * 清掉adaptField同時，要將adaptField裡面的widget從EngineDataStore中移除
+	 * 
+	 * @param field
+	 */
+	private void removeAdaptWidget(AdapterField field) {
+		com.google.gwt.user.client.ui.Widget widget = field.getWidget();
+		if (widget instanceof Container) {
+			removeAllComponent((Container) widget);
 		}
 	}
 
@@ -622,7 +722,7 @@ public class Engine implements IEngine, INodeProvider {
 				Map nodeInfo = NodeUtils.getAttributes(node);
 				String url = ComLibrary.getContent(nodeName);
 				String gul = ajaxComponent(url, nodeInfo);
-				NodeList nList = ComLibrary.replaceNode(nodeName, node, gul);
+				NodeList nList = ComLibrary.replaceNode(node, gul);
 				parserNode(list, nList);
 			}
 		} else {
@@ -663,7 +763,7 @@ public class Engine implements IEngine, INodeProvider {
 	 */
 	private void renderUI(LayoutContainer panel) {
 		Iterator<UIGen> it = uiGenNodeList.iterator();
-		// 增加uiGenNodeList不为空的判断，多次调用renderpage()时之前的uiGenNodeList会被清空
+		// 增加uiGenNodeList不為空的判斷，多次調用renderpage()時之前的uiGenNodeList會被清空
 		while (it.hasNext() && !uiGenNodeList.isEmpty()) {
 			UIGen uiGen = it.next();
 			Component com = uiGen.build();
@@ -678,7 +778,7 @@ public class Engine implements IEngine, INodeProvider {
 						panel.add(com);
 					}
 				}
-				// 增加判断，如果uiGenNodeList包含之前取到的元素，才调用remove
+				// 增加判斷，如果uiGenNodeList包含之前取到的元素，才調用remove
 				if (uiGenNodeList.contains(uiGen)) {
 					it.remove();
 				}

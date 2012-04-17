@@ -1,0 +1,99 @@
+/* CSS Document */
+.x-grid3-row-unselected .x-grid3-row-checker{
+  background-position: 2px 2px;
+}
+
+.ext-el-mask-msg div{font-size:12px;}
+.loading-indicator{font-size:12px;}
+
+.x-tab-strip span.x-tab-strip-text{font-size:12px;}
+
+.x-form-invalid-msg{font-size:12px;}
+.x-small-editor .x-form-field{font-size:12px;}
+.x-fieldset legend{font-size:12px;}
+
+.x-btn{font-size:12px;}
+.x-btn button{font-size:12px;}
+
+.x-toolbar td,.x-toolbar span,.x-toolbar input,.x-toolbar div,.x-toolbar select,.x-toolbar label{font-size:12px;}
+
+.x-grid3-hd-row .x-grid3-hd, .x-grid3-row .x-grid3-cell, .x-grid3-summary-row .x-grid3-cell{
+	font:normal 12px arial, tahoma, helvetica, sans-serif;
+}
+.x-grid3-hd-row td,.x-grid3-row td,.x-grid3-summary-row td{font-size:12px;}
+
+.x-grid3-topbar,.x-grid3-bottombar,.x-grid3-hd-inner {font-size:12px;}
+.x-grid-group-hd div{font-size:12px;}
+.x-grid-empty{font-size:12px;}
+
+.x-dd-drag-ghost{font-size:12px;}
+
+.x-tree-node{font-size:12px;}
+
+.x-date-middle,.x-date-left,.x-date-right{font-size:12px;}
+.x-date-inner a{font-size:12px;}
+.x-date-mp td{font-size:12px;}
+.x-date-mp-btns button{font-size:12px;}
+
+.x-tip .x-tip-mc{font-size:12px;}
+.x-tip .x-tip-header-text{font-size:12px;}
+.x-tip .x-tip-body{font-size:12px;}
+
+.x-menu-list-item{font-size:12px;}
+
+#x-debug-browser .x-tree .x-tree-node a span{font-size:12px;}
+
+.x-combo-list-hd{font-size:12px;}
+.x-combo-list-small .x-combo-list-item{font-size:12px;}
+
+.x-panel-header{font-size:12px;}
+.x-panel-tl .x-panel-header{font-size:12px;}
+.x-panel-mc{font-size:12px;}
+
+.x-window-tl .x-window-header{font-size:12px;}
+.x-window-mc{font-size:12px;}
+
+.x-progress-text{font-size:12px;}
+
+.x-date-picker,.x-date-picker a{font-size:12px;}
+.x-date-left{font-size:12px;}
+
+.ext-ie .x-toolbar{font-size:12px;}
+
+.x-info-mc{font-size:12px;}
+
+.my-list-item-text{font-size:12px;}
+
+.my-tbl{font-size:12px;}
+.my-tbl-col-text{font-size:12px;}
+.my-tbl-data .my-tbl-item-cell-text{font-size:12px;}
+
+.my-tree{font-size:12px;}
+.my-treeitem,.my-treeitem table,.my-treeitem table td{font-size:12px;}
+
+.x-grid3-row {
+  -moz-user-select: toggle;
+  -khtml-user-select: none;
+  -webkit-user-select: text;
+}
+
+.x-grid3-row-alt {
+  background-color: #eff2e5;
+}
+
+.x-grid-editor {
+	border:#EEE 1px inset;
+	line-height: 20px;
+	background-repeat: no-repeat;
+	background-position: top right;
+}
+
+
+.x-grid3-hd-inner {
+	word-wrap: break-word; /* IE */
+	word-break:break-all;
+	white-space: normal;
+}
+.x-form-item .x-form-item-label {
+  font-size:12px;
+}
