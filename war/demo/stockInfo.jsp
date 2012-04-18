@@ -11,5 +11,5 @@
 	} finally {
 		is.close();
 	}
-	String st = new String(buf,0,bytes);
+	String st = new String(buf,0,bytes,"big5");
 	out.print("["+st+"]");%>
