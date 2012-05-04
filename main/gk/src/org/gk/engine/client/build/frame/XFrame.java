@@ -20,6 +20,7 @@ import org.gk.engine.client.build.panel.XContentPanel;
 
 import com.extjs.gxt.ui.client.widget.Component;
 import com.extjs.gxt.ui.client.widget.ContentPanel;
+import com.extjs.gxt.ui.client.widget.layout.FitLayout;
 import com.google.gwt.user.client.ui.Frame;
 import com.google.gwt.xml.client.Node;
 
@@ -42,6 +43,7 @@ public class XFrame extends XContentPanel {
 	@Override
 	public Component build() {
 		ContentPanel cp = new ContentPanel();
+		cp.setLayout(new FitLayout());
 		super.initComponent(cp);
 		Frame frame = new Frame(url);
 		cp.add(frame);
