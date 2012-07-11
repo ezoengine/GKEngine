@@ -16,7 +16,6 @@
  */
 package org.gk.engine.client.event.attrib;
 
-import org.gk.ui.client.com.grid.gkMultiEditorGridIC;
 import org.gk.ui.client.com.grid.gkPageGridIC;
 
 import com.extjs.gxt.ui.client.widget.Component;
@@ -39,9 +38,6 @@ public class PageBarAttribute implements IAttribute {
 		Object value = null;
 		if (com instanceof gkPageGridIC) {
 			value = ((gkPageGridIC) com).getPageInfo();
-		} else if (com instanceof gkMultiEditorGridIC) {
-			gkMultiEditorGridIC grid = (gkMultiEditorGridIC) com;
-			value = getAttributeValue(grid.getOrigenalGridIC());
 		}
 		return value;
 	}

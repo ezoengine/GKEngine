@@ -19,7 +19,6 @@ package org.gk.engine.client.event.attrib;
 import java.util.List;
 
 import org.gk.ui.client.com.form.gkComboBox;
-import org.gk.ui.client.com.form.gkListFieldIC;
 import org.gk.ui.client.com.grid.gkGridIC;
 
 import com.extjs.gxt.ui.client.widget.Component;
@@ -59,8 +58,6 @@ public class ListAttribute implements IAttribute {
 			}
 		} else if (com instanceof gkGridIC) {
 			((gkGridIC) com).setInfo(value);
-		} else if (com instanceof gkListFieldIC) {
-			((gkListFieldIC) com).setInfo(value);
 		}
 	}
 
@@ -72,8 +69,6 @@ public class ListAttribute implements IAttribute {
 			value = cb.getStore().getModels();
 		} else if (com instanceof gkGridIC) {
 			value = ((gkGridIC) com).getInfo();
-		} else if (com instanceof gkListFieldIC) {
-			value = ((gkListFieldIC) com).getInfo();
 		}
 		return value;
 	}

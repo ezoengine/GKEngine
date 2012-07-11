@@ -16,13 +16,11 @@
  */
 package org.gk.engine.client.event;
 
-import java.util.Map;
+import java.util.List;
 
 import org.gk.engine.client.build.XComponent;
-import org.gk.ui.client.com.form.gkMap;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
-import com.google.gwt.core.client.JsArrayString;
 
 /**
  * Pub事件處理器
@@ -33,32 +31,9 @@ import com.google.gwt.core.client.JsArrayString;
 public class PubHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
-		Map info = new gkMap();
-		info.put("src", xComId);
-		info.put("url", getURL());
-
-		JsArrayString split = splitContent(content);
-		if (split.length() == 2) {
-			Object value = getValue(split.get(1));
-			if (value != null) {
-				info.put(xComId, value);
-			} else {
-				info.putAll(getInfo(split.get(1)));
-			}
-		}
-		EventCenter.publish(split.get(0), info);
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
+		EventCenter.publish(prepareEventId(sources),
+				prepareInfo(xComId, targets));
 	}
-
-	protected native JsArrayString splitContent(String content)/*-{
-		content = content.replace(':{', '&{');
-		if (content.indexOf('&') == -1) {
-			content = content.replace(':[', '&[');
-			if (content.indexOf('&') == -1) {
-				content = content.replace(':', '&');
-			}
-		}
-		return content.split("&");
-	}-*/;
 }

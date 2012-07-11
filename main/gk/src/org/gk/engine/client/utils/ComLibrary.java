@@ -35,7 +35,6 @@ import com.extjs.gxt.ui.client.core.FastMap;
 import com.extjs.gxt.ui.client.core.FastSet;
 import com.extjs.gxt.ui.client.core.XDOM;
 import com.extjs.gxt.ui.client.js.JsUtil;
-import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.http.client.Request;
@@ -66,9 +65,6 @@ import com.google.gwt.xml.client.NodeList;
  * @since 2011/4/19
  */
 public class ComLibrary {
-
-	private static final String GUL_LIB_COMPONENT_LIB = "gul/lib/component.lib";
-
 	private static Map<String, String> library = new FastMap();
 
 	private static boolean ready;
@@ -144,6 +140,7 @@ public class ComLibrary {
 			nodeAttr.put("${" + attrNode.getNodeName() + "}",
 					attrNode.getNodeValue());
 		}
+		gul = replaceExtraBackslash(gul);
 		// 從元件庫中取得屬性Map
 		JsArrayString list = (JsArrayString) findReplaceAttributes(gul);
 		Map<String, String> libAttr = new FastMap();
@@ -191,6 +188,20 @@ public class ComLibrary {
 	}
 
 	/**
+	 * 將id是${xxx}的取代成uniqueId
+	 * 
+	 * @param gul
+	 * @return String
+	 */
+	public static String replaceAnonymousId(String gul) {
+		JsArrayString list = (JsArrayString) findReplaceAttributes(gul);
+		for (int i = 0; i < list.length(); i++) {
+			gul = gul.replace(list.get(i), XDOM.getUniqueId());
+		}
+		return gul;
+	}
+
+	/**
 	 * 取得Expression Language 的變數名稱，如 ${val1==''?'':val1} 取得 val1
 	 * 
 	 * @param el
@@ -215,10 +226,35 @@ public class ComLibrary {
 		return el.replaceAll("\\$\\{|\\}", "").replaceAll("&lt;", "<");
 	}
 
+	/**
+	 * 組EL字串時因為使用backslash(\)的符號，會導致在findReplaceAttributes會漏掉el的變數
+	 * 
+	 * @param gul
+	 * @return String
+	 */
+	private static String replaceExtraBackslash(String gul) {
+		gul = gul.replace("=\\\"", "=\"").replace("}\\", "}");
+		return gul;
+	}
+
 	private static native String execEL(String el, String key, String value)/*-{
-		var regular = new RegExp(key, "g");
-		el = el.replace(regular, "'" + value + "'");
-		return $wnd.eval(el);
+		var reg = new RegExp("={2}|\!=|\>\=|\<\=|\>|\<", "i");
+		var vars = [];
+		var symbol = el.match(reg);
+		var symbolLen = symbol[0].length;
+		vars[0] = el.substring(0, el.search(reg));
+		vars[1] = el.substring(el.search(reg) + symbolLen, el.search(/(\?)/i));
+		vars[2] = el.substring(el.search(/(\?)/i) + 1, el.search(/:/));
+		vars[3] = el.substring(el.search(/:/) + 1, el.length);
+
+		for ( var i = 0; i < vars.length; i++) {
+			if (vars[i] == key) {
+				vars[i] = "'" + value + "'";
+			}
+		}
+		var newEL = vars[0] + symbol[0] + vars[1] + "?" + vars[2] + ":"
+				+ vars[3];
+		return $wnd.eval(newEL);
 	}-*/;
 
 	/**
@@ -230,7 +266,7 @@ public class ComLibrary {
 	private static native JavaScriptObject findReplaceAttributes(String gul)/*-{
 		var replaces = [];
 		// 使用「="」、「"」、「$」做第一次的分割
-		var splitEL = gul.split(/=\"|\"|(?=\$)/);
+		var splitEL = gul.split(/=\"|\"|\(|(?=\$)/);
 		for (i = 0; i < splitEL.length; i++) {
 			// 去掉前後空白
 			var mapper = splitEL[i].replace(/^\s*|\s*$/g, '');
@@ -240,7 +276,7 @@ public class ComLibrary {
 			}
 		}
 		// 再使用「='」、「'」、「$」做第二次的分割
-		splitEL = gul.split(/='|'|(?=\$)/);
+		splitEL = gul.split(/='|'|\(|(?=\$)/);
 		for (i = 0; i < splitEL.length; i++) {
 			// 去掉前後空白
 			var mapper = splitEL[i].replace(/^\s*|\s*$/g, '');
@@ -264,15 +300,6 @@ public class ComLibrary {
 			Map lib = (Map) JsonConvert.jsonString2Object(allGULSyntax);
 			library.putAll(lib);
 		}
-	}
-
-	/**
-	 * 載入元件庫
-	 */
-	public static void loadingLibrary() {
-		String homeUrl = GWT.getModuleBaseURL();
-		homeUrl = homeUrl.substring(0, homeUrl.indexOf("html/"));
-		requestGet(homeUrl + GUL_LIB_COMPONENT_LIB);
 	}
 
 	/**

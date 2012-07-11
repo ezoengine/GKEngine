@@ -24,6 +24,7 @@ import com.extjs.gxt.ui.client.widget.form.FormPanel.LabelAlign;
 import com.extjs.gxt.ui.client.widget.layout.ColumnData;
 import com.extjs.gxt.ui.client.widget.layout.ColumnLayout;
 import com.extjs.gxt.ui.client.widget.layout.FormLayout;
+import com.extjs.gxt.ui.client.widget.toolbar.ToolBar;
 import com.google.gwt.user.client.ui.Widget;
 
 public class gkFormRow extends LayoutContainer {
@@ -56,11 +57,14 @@ public class gkFormRow extends LayoutContainer {
 		if (widget instanceof Field && labelAlign == LabelAlign.LEFT) {
 			setFieldLabelAlign((Field) widget, labelAlign.name().toLowerCase());
 		}
-
-		LayoutContainer lc = new LayoutContainer(fl);
-		result &= lc.add(widget,
-				LayoutUtils.createFormData(widget, width, height));
-		result &= add(lc, new ColumnData(xferDataWidth(rate[1])));
+		if (widget instanceof ToolBar) {
+			result &= add(widget, new ColumnData(xferDataWidth(rate[1])));
+		} else {
+			LayoutContainer lc = new LayoutContainer(fl);
+			result &= lc.add(widget,
+					LayoutUtils.createFormData(widget, width, height));
+			result &= add(lc, new ColumnData(xferDataWidth(rate[1])));
+		}
 		return result;
 	}
 

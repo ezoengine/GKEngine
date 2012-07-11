@@ -16,8 +16,13 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkFieldBinding;
+import org.gk.ui.client.binding.gkYMFieldBinding;
 import org.gk.ui.client.com.form.gkYMField;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.event.Events;
 import com.extjs.gxt.ui.client.widget.Component;
@@ -30,15 +35,17 @@ public class YMFieldBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create() {
-		gkYMField field = new gkYMField(getField().getFormat());
+		gkYMField field = new gkYMField();
 		initField(field);
 		return field;
 	}
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		gkYMField field = form.createYMField(getField().getName(), getField()
-				.getFormat());
+		gkYMField field = new gkYMField();
+		gkFieldBinding fb = new gkYMFieldBinding(field, getField().getName(),
+				(Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}
@@ -46,9 +53,14 @@ public class YMFieldBuilder extends FormFieldBuilder {
 	private void initField(gkYMField field) {
 		field.setFieldLabel(getField().getLabel());
 
+		String format = getField().getFormat();
+		if (!format.equals("")) {
+			field.setFormat(format);
+		}
+
 		String value = getField().getValue();
 		if (!value.equals("")) {
-			field.setUseDate(value);
+			DateTimeUtils.setValue(field, value);
 			field.fireEvent(Events.Change);
 		}
 	}

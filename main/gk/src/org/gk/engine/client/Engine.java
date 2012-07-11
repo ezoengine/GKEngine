@@ -36,6 +36,7 @@ import org.gk.engine.client.build.js.XJavaScript;
 import org.gk.engine.client.build.layout.XLayoutData;
 import org.gk.engine.client.event.EventCenter;
 import org.gk.engine.client.event.EventHandler;
+import org.gk.engine.client.exception.GKEngineException;
 import org.gk.engine.client.exception.LibraryNotFoundException;
 import org.gk.engine.client.gen.UIGen;
 import org.gk.engine.client.i18n.EngineMessages;
@@ -60,7 +61,6 @@ import com.extjs.gxt.ui.client.widget.grid.Grid;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
 import com.google.gwt.core.client.JavaScriptObject;
-import com.google.gwt.core.client.RunAsyncCallback;
 import com.google.gwt.user.client.Cookies;
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Element;
@@ -113,15 +113,7 @@ public class Engine implements IEngine, INodeProvider {
 	public static Engine get() {
 		if (engine == null) {
 			engine = new Engine();
-			engine.runAsync();
-		}
-		return engine;
-	}
-
-	public static Engine getJSEngine() {
-		if (engine == null) {
-			engine = new Engine();
-			engine.runSync();
+			engine.build();
 		}
 		return engine;
 	}
@@ -146,28 +138,10 @@ public class Engine implements IEngine, INodeProvider {
 		});
 	}
 
-	protected void runSync() {
-		build();
-	}
-
-	protected void runAsync() {
-		GWT.runAsync(Engine.class, new RunAsyncCallback() {
-			@Override
-			public void onSuccess() {
-				build();
-			}
-
-			@Override
-			public void onFailure(Throwable reason) {
-				EngineLogger.log(reason);
-			}
-		});
-	}
-
 	private void build() {
 		Builder.attach(Engine.this);
 		loadingLibrary();
-		hookJSMethod();
+		JSMethods.hookJSMethods();
 	}
 
 	/**
@@ -180,121 +154,9 @@ public class Engine implements IEngine, INodeProvider {
 				var gkEngineLib = gkEngine.getAttribute('lib');
 				@org.gk.engine.client.utils.ComLibrary::loadingLibrary(Ljava/lang/String;)(gkEngineLib);
 			} else {
-				@org.gk.engine.client.utils.ComLibrary::loadingLibrary()();
+				@org.gk.engine.client.utils.ComLibrary::loadingLibrary(Ljava/lang/String;)("/gul/lib/component.lib");
 			}
 		})();
-	}-*/;
-
-	/**
-	 * 註冊JavaScript方法，提供隨時給JavaScript調用
-	 */
-	public native void hookJSMethod()/*-{
-		$wnd.gk = new Object();
-		$wnd.gk.set = function(id, value) {
-			// 判斷元素是否為 array 原本的value instanceof $wnd.Array 貌似會判斷不出來
-			var isArray = Object.prototype.toString.apply(value) === '[object Array]';
-			var isObject = typeof (value) == 'object';
-			if (isArray || isObject) {
-				@org.gk.engine.client.build.js.XJavaScript::setAttributeValue(Ljava/lang/String;ZLcom/google/gwt/core/client/JavaScriptObject;)(id, isArray, value)
-			} else {
-				try {
-					@org.gk.engine.client.build.js.XJavaScript::setAttributeValue(Ljava/lang/String;Ljava/lang/Object;)(id, value);
-				} catch (x) {
-					// 其他非Object型別的value轉成字串來處理，如number、boolean
-					@org.gk.engine.client.build.js.XJavaScript::setAttributeValue(Ljava/lang/String;Ljava/lang/Object;)(id, '' + value);
-				}
-			}
-		}
-		$wnd.gk.get = function(id) {
-			var value = @org.gk.engine.client.build.js.XJavaScript::getJSONValue(Ljava/lang/String;)(id);
-			if (value == null) {
-				return null;
-			} else {
-				var c = value.charAt(0);
-				return c == '[' || c == '{' ? eval('(' + value + ')') : value;
-			}
-		}
-		$wnd.gk.createUniqueId = function(gul) {
-			return @org.gk.engine.client.build.js.XJavaScript::createUniqueId(Ljava/lang/String;)(gul);
-		}
-		$wnd.gk.jsonp = function(url, param) {
-			var script = $doc.createElement('script');
-			script.type = 'text/javascript';
-			if (arguments.length == 2 && param.length > 0) {
-				url += "?";
-				for (i = 0; i < param.length; i++) {
-					url += i == param.length - 1 ? param[i] : param[i] + "&";
-				}
-			}
-			script.src = url;
-			$doc.getElementsByTagName('head')[0].appendChild(script);
-		}
-		$wnd.gk.fire = function(id, eventType) {
-			return @org.gk.engine.client.build.js.XJavaScript::fire(Ljava/lang/String;Ljava/lang/String;)(id, eventType);
-		}
-		$wnd.gk.library = function(gulSyntax) {
-			@org.gk.engine.client.utils.ComLibrary::setLibrary(Ljava/lang/String;)(gulSyntax);
-		}
-		$wnd.gk.getParameter = function(parm) {
-			var searchParm = parm + "=";
-			var url = $wnd.location.href;
-			var index = url.indexOf("?");
-			if (index > 0) {
-				var queryString = url.substring(index + 1, url.length);
-				var parms = queryString.split("&");
-				for ( var i = 0; i < parms.length; i++) {
-					if (parms[i].indexOf(searchParm) == 0) {
-						return parms[i].substring(searchParm.length,
-								parms[i].length);
-					}
-				}
-			}
-			return null;
-		}
-		$wnd.gk.event = function(gulAtt, callback) {
-			@org.gk.engine.client.Engine::invokeEvent(Ljava/lang/String;Lcom/google/gwt/core/client/JavaScriptObject;)(gulAtt, callback);
-		}
-		$wnd.gk.param = $wnd.gk.getParameter;
-		$wnd.gk.row = function(obj) {
-			return obj['_gk_idx'].split(',')[0];
-		}
-		$wnd.gk.col = function(obj) {
-			return obj['_gk_idx'].split(',')[1];
-		}
-		$wnd.gk.column = $wnd.gk.col;
-		$wnd.gk.beforeParser = function(gul) {
-			return gul;
-		}
-		$wnd.gk.i18n = function(gul) {
-			var split = gul.split(/(?=#D\{)|\'|\"/);
-			for (i = 0; i < split.length; i++) {
-				// 去掉空白
-				var mapper = split[i].replace(/^\s*|\s*$/g, '');
-				// 符合「#D{...}」才做替換
-				if (mapper.match(/^(#D\{).+\}$/) != null) {
-					var code = mapper.substring(mapper.indexOf('{') + 1, mapper
-							.indexOf('}'));
-					gul = gul.replace(mapper, $wnd.$.i18n.prop(code));
-				}
-			}
-			return gul;
-		}
-		$wnd.gk.listener = function(userId, midTime) {
-			@org.gk.engine.client.Engine::registryWindowFocusBlur(Ljava/lang/String;Ljava/lang/String;)(userId, '' + midTime);
-			@org.gk.engine.client.Engine::listener(Ljava/lang/String;Ljava/lang/String;)(userId, '' + midTime);
-			return 'done.';
-		}
-		$wnd.gk.cookie = function(name, value) {
-			var numargs = arguments.length;
-			if (numargs == 1) {
-				return @org.gk.engine.client.Engine::getCookie(Ljava/lang/String;)(name);
-			} else if (numargs == 2) {
-				@org.gk.engine.client.Engine::setCookie(Ljava/lang/String;Ljava/lang/String;)(name, value);
-			}
-		}
-		$wnd.gk.libraryAttributes = function(name) {
-			return @org.gk.engine.client.utils.ComLibrary::getLibraryAttributes(Ljava/lang/String;)(name);
-		}
 	}-*/;
 
 	private static String getCookie(String name) {
@@ -327,6 +189,21 @@ public class Engine implements IEngine, INodeProvider {
 	}-*/;
 
 	/**
+	 * 取得gk.load指定GUL
+	 * 
+	 * <pre>
+	 * Page時，該Page的Path如果是Web通常會使用相對路徑方式設定， 
+	 * 如果考慮行動裝置的話，應設定完整路徑
+	 * 例如: http://www.ezoui.com/portal/index.gul
+	 * </pre>
+	 * 
+	 * @return String
+	 */
+	public static native String getGKPath()/*-{
+		return $wnd.gk.path;
+	}-*/;
+
+	/**
 	 * 啟動polling機制，接收後端傳來資料
 	 * 
 	 * @param userId
@@ -338,7 +215,18 @@ public class Engine implements IEngine, INodeProvider {
 			EventBus.get(userId).disconnect();
 			return;
 		}
-		EventBus.get(userId).connectServer(Integer.parseInt(midTime));
+		String gkPath = getGKPath();
+		if (gkPath != null && gkPath.startsWith("http://")) {
+			String[] urlSplit = gkPath.split("/");
+			if (urlSplit.length == 3) {
+				throw new GKEngineException("gk.listener failure! " + gkPath);
+			}
+			String host = urlSplit[0] + "//" + urlSplit[2] + "/" + urlSplit[3]
+					+ "/";
+			EventBus.get(userId).connectServer(host, Integer.parseInt(midTime));
+		} else {
+			EventBus.get(userId).connectServer(Integer.parseInt(midTime));
+		}
 		EventBus.get(userId).subscribe("javascript",
 				new EventProcessImpl("javascript") {
 					@Override
@@ -443,7 +331,7 @@ public class Engine implements IEngine, INodeProvider {
 		backup();
 		try {
 			// 將GUL文件轉成XML文件，如果有問題就拋出Exception
-			Document doc = NodeUtils.parseGUL(gul);
+			Document doc = parseGUL(gul);
 
 			NodeList nodeList = hasRoot ? doc.getChildNodes().item(0)
 					.getChildNodes() : doc.getChildNodes();
@@ -478,6 +366,11 @@ public class Engine implements IEngine, INodeProvider {
 		}
 	}
 
+	private Document parseGUL(String gul) {
+		gul = ComLibrary.replaceAnonymousId(gul);
+		return NodeUtils.parseGUL(gul);
+	}
+
 	private void check() {
 		// 每次render結束後，插上log以觀察是否有記憶體洩漏的狀況
 		EngineLogger.console(EventBus.getEventBusList());
@@ -493,25 +386,28 @@ public class Engine implements IEngine, INodeProvider {
 		Iterator it = key.iterator();
 		while (it.hasNext()) {
 			String ke = it.next().toString() + "";
-			Set map = (Set) renderPanelCom.get(ke);
+			Set map = renderPanelCom.get(ke);
 			rpComSize += map.size();
 		}
 		if (uiGenNodeSize != rpComSize) {
-			EngineLogger.log(new Throwable("Engine資料不一致！"));
-			EngineLogger.console("Engine資料不一致！");
-			EngineLogger.console("Nodes:"
-					+ EngineDataStore.getUIGenNodeMapSize());
-			EngineLogger.console("Nodes:" + EngineDataStore.getUIGenNodeMap());
-			EngineLogger.console("Components:"
-					+ EngineDataStore.getComponentMapSize());
-			EngineLogger.console("Components:"
-					+ EngineDataStore.getComponentMap());
+			String temp = "";
+			Map nodeMap = EngineDataStore.getUIGenNodeMap();
 			it = key.iterator();
 			while (it.hasNext()) {
 				String ke = it.next().toString() + "";
-				Set map = (Set) renderPanelCom.get(ke);
-				EngineLogger.console("renderPanelCom-" + ke + ":" + map.size());
-				EngineLogger.console(ke + ":" + map);
+				Set map = renderPanelCom.get(ke);
+				Iterator mapIt = map.iterator();
+				while (mapIt.hasNext()) {
+					Object obj = mapIt.next();
+					if (!nodeMap.containsKey(obj)) {
+						temp += obj + ",";
+					}
+				}
+			}
+			if (!temp.equals("")) {
+				EngineLogger.console("different info===\n");
+				EngineLogger.console(temp + "\n");
+				EngineLogger.console("============");
 			}
 		}
 	}
@@ -591,7 +487,7 @@ public class Engine implements IEngine, INodeProvider {
 		Iterator it = key.iterator();
 		while (it.hasNext()) {
 			String ke = it.next().toString() + "";
-			Set set = (Set) renderPanelCom.get(ke);
+			Set set = renderPanelCom.get(ke);
 			if (set.contains(id)) {
 				set.remove(id);
 				return;

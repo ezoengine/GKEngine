@@ -16,8 +16,13 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkDateFieldBinding;
+import org.gk.ui.client.binding.gkFieldBinding;
 import org.gk.ui.client.com.form.gkDateField;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.event.Events;
 import com.extjs.gxt.ui.client.widget.Component;
@@ -30,15 +35,17 @@ public class DateFieldBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create() {
-		gkDateField field = new gkDateField(getField().getFormat());
+		gkDateField field = new gkDateField();
 		initField(field);
 		return field;
 	}
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		gkDateField field = form.createDateField(getField().getName(),
-				getField().getFormat());
+		gkDateField field = new gkDateField();
+		gkFieldBinding fb = new gkDateFieldBinding(field, getField().getName(),
+				(Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}
@@ -46,9 +53,14 @@ public class DateFieldBuilder extends FormFieldBuilder {
 	private void initField(gkDateField field) {
 		field.setFieldLabel(getField().getLabel());
 
+		String format = getField().getFormat();
+		if (!format.equals("")) {
+			field.setFormat(format);
+		}
+
 		String value = getField().getValue();
 		if (!value.equals("")) {
-			field.setUseDate(value);
+			DateTimeUtils.setValue(field, value);
 			field.fireEvent(Events.Change);
 		}
 	}

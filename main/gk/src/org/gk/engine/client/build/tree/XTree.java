@@ -20,14 +20,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jfreecode.gwt.event.client.bus.EventObject;
-
 import org.gk.engine.client.build.panel.XContentPanel;
 import org.gk.engine.client.event.EventCenter;
 import org.gk.engine.client.gen.UIGen;
 import org.gk.engine.client.res.UIRes;
 import org.gk.ui.client.com.form.gkMap;
-import org.gk.ui.client.com.tree.gkTreePanelIC;
 import org.gk.ui.client.com.tree.xml.gkTreeHandler;
 import org.gk.ui.client.com.tree.xml.gkXMLTreePanelIC;
 
@@ -77,7 +74,8 @@ public class XTree extends XContentPanel {
 		gkXMLTreePanelIC tree = new gkXMLTreePanelIC(id, "name", "", dragSource) {
 			@Override
 			protected gkMap getRootNodeInfo() {
-				return new gkMap(gkTreePanelIC.NAME, name).fill("text", value);
+				return new gkMap(gkXMLTreePanelIC.NAME, name).fill("text",
+						value);
 			}
 
 			/**
@@ -185,18 +183,8 @@ public class XTree extends XContentPanel {
 
 					@Override
 					public void handleEvent(TreePanelEvent tpe) {
-						TreePanelSelectionModel sm = tree.getTree()
-								.getSelectionModel();
-						sm.select(tpe.getItem(), false);
-						tree.getTree().setSelectionModel(sm);
 						EventCenter.exec(id, onExpand, XTree.this, tpe);
 					}
 				});
-	}
-
-	@Override
-	public void onInfo(String eventId, String content) {
-		bus.publish(new EventObject(id + gkXMLTreePanelIC.Event.setXMLInfo,
-				content));
 	}
 }

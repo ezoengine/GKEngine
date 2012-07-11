@@ -16,6 +16,10 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkFieldBinding;
+import org.gk.ui.client.binding.gkLabelFieldBinding;
 import org.gk.ui.client.com.form.gkLabelField;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
@@ -38,7 +42,10 @@ public class LabelFieldBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		LabelField field = form.createLabelField(getField().getName());
+		LabelField field = new gkLabelField();
+		gkFieldBinding fb = new gkLabelFieldBinding(field,
+				getField().getName(), (Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}

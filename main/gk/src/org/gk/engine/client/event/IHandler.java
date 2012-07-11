@@ -16,6 +16,8 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.List;
+
 import org.gk.engine.client.build.XComponent;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
@@ -29,14 +31,14 @@ import com.extjs.gxt.ui.client.event.BaseEvent;
 public interface IHandler {
 
 	/**
-	 * 處理輸入的content內容
+	 * 處理輸入的sources與targets內容
 	 * 
 	 * @param xComId
-	 * @param content
+	 * @param sources
+	 * @param targets
 	 * @param xCom
-	 * @param BaseEvent
+	 * @param be
 	 */
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be);
-
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be);
 }

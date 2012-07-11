@@ -21,11 +21,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.gk.engine.client.build.XComponent;
+import org.gk.engine.client.exception.GKEngineException;
+import org.gk.engine.client.res.UIRes;
 import org.gk.ui.client.com.form.gkList;
 import org.gk.ui.client.com.form.gkMap;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
-import com.google.gwt.core.client.JsArrayString;
+import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.core.client.ScriptInjector;
 
 /**
  * 事件解析處理中心
@@ -45,6 +48,10 @@ public class EventCenter {
 
 	private static Map<String, List> subscribers = new gkMap();
 
+	static {
+		ScriptInjector.fromString(UIRes.get.parserJS().getText()).inject();
+	}
+
 	/**
 	 * 執行事件語法
 	 * 
@@ -58,18 +65,22 @@ public class EventCenter {
 	 * @param com
 	 * @param be
 	 */
-	public static void exec(String xComId, String events, Object com,
+	public static void exec(String xComId, String eventString, Object com,
 			BaseEvent be) {
-		if (events.equals("") || !(com instanceof XComponent)) {
+		if (eventString.equals("") || !(com instanceof XComponent)) {
 			return;
 		}
 
-		JsArrayString sp = splitEvent(events);
-		for (int i = 0; i < sp.length(); i++) {
-			// 檢查符合的話，就轉由EventHandler.doProcess開始進行事件解析與處理
-			if (matchEventPattern(sp.get(i))) {
-				EventHandler.doProcess(xComId, sp.get(i), (XComponent) com, be);
+		EventList events = EventFactory
+				.convertToEventList(parseEventString(eventString));
+		if (!events.isError()) {
+			List lists = events.getEvents();
+			for (Iterator it = lists.iterator(); it.hasNext();) {
+				EventData ed = EventFactory.convertToEventData(it.next());
+				EventHandler.doProcess(xComId, ed, (XComponent) com, be);
 			}
+		} else {
+			throw new GKEngineException(events.getErrorMessage());
 		}
 	}
 
@@ -126,22 +137,12 @@ public class EventCenter {
 	}
 
 	/**
-	 * 將多個串聯在一起的事件語法依pub、bean、file、sub、com、show、js做分割
+	 * 透過gk_parse方法，將事件語法字串分割
 	 * 
-	 * @param events
-	 * @return JsArrayString
+	 * @param eventString
+	 * @return JavaScriptObject
 	 */
-	private static native JsArrayString splitEvent(String events)/*-{
-		return events.split(/,?(?=pub:|bean:|file:|sub:|com:|show:|js:)/);
-	}-*/;
-
-	/**
-	 * 檢查是否符合事件撰寫語法
-	 * 
-	 * @param event
-	 * @return boolean
-	 */
-	private static native boolean matchEventPattern(String event)/*-{
-		return event.match(/\w+:.+(:.+)?/) != null;
+	private static native JavaScriptObject parseEventString(String eventString)/*-{
+		return gk_parse(eventString);
 	}-*/;
 }

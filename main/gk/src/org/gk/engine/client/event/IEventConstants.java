@@ -46,6 +46,7 @@ public interface IEventConstants {
 
 	public final static String ATTRIB_ADD = "add";
 	public final static String ATTRIB_CELL = "cell";
+	public final static String ATTRIB_CHECKED = "checked";
 	public final static String ATTRIB_CLEAR = "clear";
 	public final static String ATTRIB_COLLAPSE = "collapse";
 	public final static String ATTRIB_DATA = "data";

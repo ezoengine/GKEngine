@@ -23,6 +23,7 @@ import org.gk.ui.client.com.form.gkMap;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.ImageResource;
+import com.google.gwt.resources.client.TextResource;
 
 public interface UIRes extends ClientBundle {
 	UIRes get = GWT.create(UIRes.class);
@@ -51,4 +52,7 @@ public interface UIRes extends ClientBundle {
 
 	@Source("lightning.png")
 	ImageResource imgLightning();
+
+	@Source("gk_parser-min.js")
+	TextResource parserJS();
 }

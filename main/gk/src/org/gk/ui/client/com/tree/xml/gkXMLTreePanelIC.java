@@ -48,6 +48,8 @@ import com.extjs.gxt.ui.client.widget.menu.Menu;
 import com.extjs.gxt.ui.client.widget.menu.MenuItem;
 import com.extjs.gxt.ui.client.widget.treepanel.TreePanel;
 import com.extjs.gxt.ui.client.widget.treepanel.TreePanel.TreeNode;
+import com.google.gwt.event.dom.client.KeyCodes;
+import com.google.gwt.regexp.shared.RegExp;
 import com.google.gwt.resources.client.ImageResource;
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Element;
@@ -80,28 +82,21 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 	public static final String NAME = "name"; // 顯示的節點名稱
 	public static final String TEXT = "text"; //
 	public static final String NODE = "node"; // XML節點屬性ID
-	public static final String ID = "id"; // 唯一的识别ID
+	public static final String ID = "id"; // 唯一的識別ID
 	public static final String ICON = "icon", PARENT_NODE = "parentNode",
 			NODE_DATA = "nodeData", ELEMENT_ID = "elementId";
 
 	protected static final int KeyCodeF2 = 113;
-	protected static final int KeyCodeEnter = 13;
 	protected static final String EditTree = "editTree";
-	protected boolean inEdit = false; // 树节点是否为正在修改名字状态
+	protected boolean inEdit = false; // 樹節點是否為正在修改名字狀態
 	protected boolean hasChildren = false; // 設定是否有子節點
 
 	public static interface Event {
-		public final static String setXMLInfo = ".setXMLInfo";
 		public final static String getXMLInfo = ".getXMLInfo";
 		public final static String onClick = ".onClick";
 		public final static String onMouseOver = ".onMouseOver";
 		public final static String onDoubleClick = ".onDoubleClick";
 		public final static String afterLoad = ".afterLoad";
-		public final static String onEdit = ".onEdit";
-	}
-
-	public String evtSetXMLInfo() {
-		return getId() + Event.setXMLInfo;
 	}
 
 	public String evtGetXMLInfo() {
@@ -122,10 +117,6 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 
 	public String evtAfterLoad() {
 		return getId() + Event.afterLoad;
-	}
-
-	public String evtOnEdit() {
-		return getId() + Event.onEdit;
 	}
 
 	@Override
@@ -192,11 +183,17 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 
 	@Override
 	public void setInfo(Object info) {
-		store.removeAll(); // 清掉所有節點
+		// 清掉所有節點
+		store.removeAll();
 		// 透過GWT API解析整個XML字串轉成doc物件
-		String rootNmae = getRootNodeInfo().get(NAME);
-		doc = XMLParser.parse("<" + rootNmae + " id='" + getId() + "' >" + info
-				+ "</" + rootNmae + ">");
+		if (RegExp.compile("</?[rR][oO][oO][tT][a-z0-9]*[^<>]*>").test(
+				info.toString())) {
+			doc = XMLParser.parse(info.toString());
+		} else {
+			doc = XMLParser.parse("<ROOT id='" + getId() + "' name='"
+					+ getRootNodeInfo().get(NAME) + "'>" + info + "</ROOT>");
+		}
+
 		XMLParser.removeWhitespace(doc.getFirstChild());
 		// 解析doc's node資訊放到store裡面
 		parseXmlDoc2Store(doc, store);
@@ -221,88 +218,7 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 
 	@Override
 	public void bindEvent() {
-		// 訂閱XML更新資訊
-		core.subscribe(evtSetXMLInfo(), new EventProcess() {
 
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				setInfo(eo.getInfoString());
-			}
-		});
-
-		// 监听编辑动作
-		core.subscribe(evtOnEdit(), new EventProcess() {
-			@Override
-			public void execute(String eventId, EventObject e) {
-				TreeNode tn = (TreeNode) e.getInfoMap().get(
-						(tree.getSelectionModel().getSelectedItem()
-								.getProperties().get(ID) + ""));
-				// 取得当前的节点
-				com.google.gwt.dom.client.Node nd = tn.getElement().getChild(0);
-				// 生成一个input的element
-				final Element input = DOM.createElement("input");
-				// 取得当前节点的最后一个元素,也即时写有名称的那个span
-				final com.google.gwt.dom.client.Node childnd = nd
-						.getLastChild();
-				// 保存span中的内容
-				final String oldString = childnd.getFirstChild().getNodeValue();
-				// 默认设定新的input为原来span中的内容
-				input.setAttribute("value", oldString);
-				// 设定新input的ID以便后面抓取
-				input.setAttribute("id", "newText");
-				// 保存原来span的element
-				final com.google.gwt.dom.client.Node oldNode = childnd
-						.getFirstChild().cloneNode(true);
-				// 把原来span的位置替换成input以实现能编辑的功能
-				childnd.replaceChild(input, childnd.getFirstChild());
-				// 设定字符可以被选取
-				tree.disableTextSelection(false);
-				// 聚焦当前input
-				input.focus();
-
-				// 对新的input注册失去焦点的动作和keydown的动作
-				DOM.sinkEvents(input, com.google.gwt.user.client.Event.ONBLUR
-						| com.google.gwt.user.client.Event.ONKEYDOWN
-						| com.google.gwt.user.client.Event.ONMOUSEOVER
-						| com.google.gwt.user.client.Event.ONMOUSEOUT);
-				// 监听新的input,当失去焦点或者按下enter的时候做更新动作
-				DOM.setEventListener(input, new EventListener() {
-					// 判断鼠标是否在input框内 防止点击的时候出发onblur动作
-					boolean mouseIn = true;
-
-					@Override
-					public void onBrowserEvent(
-							com.google.gwt.user.client.Event event) {
-						if (event.getTypeInt() == com.google.gwt.user.client.Event.ONMOUSEOUT) {
-							mouseIn = false;
-						}
-						if (event.getTypeInt() == com.google.gwt.user.client.Event.ONMOUSEOVER) {
-							mouseIn = true;
-						}
-
-						if (event.getTypeInt() == com.google.gwt.user.client.Event.ONBLUR
-								|| event.getKeyCode() == KeyCodeEnter) {
-							if (event.getKeyCode() == KeyCodeEnter
-									|| mouseIn == false) {
-								// 取得此时input内的内容
-								String newString = getvalue();
-								// 如果为空则还原原来的内容
-								if (newString.equals("")) {
-									input.setAttribute("value", oldString);
-								}
-								// 把原span的内容换成input中的内容
-								oldNode.setNodeValue(newString);
-								// 在用span把input替换回来
-								childnd.replaceChild(oldNode, input);
-								// 对tree的modelData进行设定,其中会发布一个事件,ap可以根据此事件在做自己的调整
-								setModelData(newString, tree);
-								inEdit = false;
-							}
-						}
-					}
-				});
-			}
-		});
 	}
 
 	/**
@@ -373,17 +289,16 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 				view.onEvent(tpe);
 			}
 
-			// 滑鼠移到樹節點上，將該節點資訊發佈出去
 			protected void onMouseOver(TreePanelEvent tpe) {
 				if (tpe.getNode() != null) {
 					Map nodeInfo = (Map) tpe.getNode().getModel();
 					nodeInfo.put(ELEMENT_ID, tpe.getNode().getElement().getId());
+					// 滑鼠移到樹節點上，將該節點資訊發佈出去
 					core.getBus().publish(
 							new EventObject(evtOnMouseOver(), nodeInfo));
 				}
 			}
 
-			// 點選樹節點，將該節點資訊發佈出去
 			@Override
 			protected void onClick(TreePanelEvent tpe) {
 				super.onClick(tpe);
@@ -392,10 +307,10 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 				}
 				Map nodeInfo = (gkMap) tpe.getNode().getModel();
 				nodeInfo.put(ELEMENT_ID, tpe.getNode().getElement().getId());
+				// 點選樹節點，將該節點資訊發佈出去
 				core.getBus().publish(new EventObject(evtOnClick(), nodeInfo));
 			}
 
-			// 雙擊樹節點，將該節點資訊發佈出去
 			@Override
 			protected void onDoubleClick(TreePanelEvent tpe) {
 				super.onDoubleClick(tpe);
@@ -404,6 +319,7 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 				}
 				Map nodeInfo = (gkMap) tpe.getNode().getModel();
 				nodeInfo.put(ELEMENT_ID, tpe.getNode().getElement().getId());
+				// 雙擊樹節點，將該節點資訊發佈出去
 				core.getBus().publish(
 						new EventObject(evtOnDoubleClick(), nodeInfo));
 			}
@@ -416,14 +332,14 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 				return true;
 			}
 		};
-		// 设定树的类型为可编辑树
+		// 設定樹的類型為可編輯樹
 		if (treeType.equals(EditTree)) {
 			tree.disableTextSelection(false);
-			// 监听到F2建时修改动作 inEdit表示目前是否为编辑中的状态
+			// 監聽到F2鍵時修改動作inEdit表示目前是否為編輯中的狀態
 			tree.addListener(Events.OnKeyDown, new Listener<TreePanelEvent>() {
 				@Override
 				public void handleEvent(TreePanelEvent be) {
-					if (be.getKeyCode() == KeyCodeF2 && inEdit == false) {
+					if (be.getKeyCode() == KeyCodeF2 && !inEdit) {
 						inEdit = true;
 						Map modelData = tree.getSelectionModel()
 								.getSelectedItem().getProperties();
@@ -433,12 +349,77 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 						TreeNode tn = tree.findNode(el);
 						Map treeNode = new gkMap();
 						treeNode.put(modelData.get(ID), tn);
-						EventBus.get().publish(
-								new EventObject(evtOnEdit(), treeNode));
+						onEdit(treeNode);
 					}
 				}
 			});
 		}
+	}
+
+	private void onEdit(Map treeNode) {
+		TreeNode tn = (TreeNode) treeNode.get((tree.getSelectionModel()
+				.getSelectedItem().getProperties().get(ID) + ""));
+		// 取得當前的節點
+		com.google.gwt.dom.client.Node nd = tn.getElement().getChild(0);
+		// 生成一個input的element
+		final Element input = DOM.createElement("input");
+		// 取得當前節點的最後一個元素，也即時寫有名稱的那個span
+		final com.google.gwt.dom.client.Node childnd = nd.getLastChild();
+		// 保存span中的內容
+		final String oldString = childnd.getFirstChild().getNodeValue();
+		// 預設設定新的input為原來span中的內容
+		input.setAttribute("value", oldString);
+		// 設定新input的ID以便後面抓取
+		input.setAttribute("id", "newText");
+		// 保存原來span的element
+		final com.google.gwt.dom.client.Node oldNode = childnd.getFirstChild()
+				.cloneNode(true);
+		// 把原來span的位置替換成input以實現能編輯的功能
+		childnd.replaceChild(input, childnd.getFirstChild());
+		// 設定字符可以被選取
+		tree.disableTextSelection(false);
+		// 聚焦當前input
+		input.focus();
+
+		// 對新的input註冊失去焦點的動作和keydown的動作
+		DOM.sinkEvents(input, com.google.gwt.user.client.Event.ONBLUR
+				| com.google.gwt.user.client.Event.ONKEYDOWN
+				| com.google.gwt.user.client.Event.ONMOUSEOVER
+				| com.google.gwt.user.client.Event.ONMOUSEOUT);
+		// 監聽新的input，當失去焦點或者按下enter的時候做更新動作
+		DOM.setEventListener(input, new EventListener() {
+			// 判斷滑鼠是否在input框內， 防止點擊的時候觸發onblur動作
+			boolean mouseIn = true;
+
+			@Override
+			public void onBrowserEvent(com.google.gwt.user.client.Event event) {
+				if (event.getTypeInt() == com.google.gwt.user.client.Event.ONMOUSEOUT) {
+					mouseIn = false;
+				}
+				if (event.getTypeInt() == com.google.gwt.user.client.Event.ONMOUSEOVER) {
+					mouseIn = true;
+				}
+
+				if (event.getTypeInt() == com.google.gwt.user.client.Event.ONBLUR
+						|| event.getKeyCode() == KeyCodes.KEY_ENTER) {
+					if (event.getKeyCode() == KeyCodes.KEY_ENTER || !mouseIn) {
+						// 取得此時input內的內容
+						String newString = getValue();
+						// 如果為空則還原原來的內容
+						if (newString.equals("")) {
+							input.setAttribute("value", oldString);
+						}
+						// 把原span的內容換成input中的內容
+						oldNode.setNodeValue(newString);
+						// 再用span把input替換回來
+						childnd.replaceChild(oldNode, input);
+						// 對tree的modelData進行設定，其中會發布一個事件，ap可以根據此事件再做自己的調整
+						setModelData(newString, tree);
+						inEdit = false;
+					}
+				}
+			}
+		});
 	}
 
 	/**
@@ -449,12 +430,10 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 	 */
 	protected void parseXmlDoc2Store(Document doc, TreeStore store) {
 		Node rootNode = doc.getFirstChild();
-		gkMap treeNode = getRootNodeInfo();
-		treeNode.put("id", getId());
-		treeNode.put(NODE, rootNode);
+		gkMap rootNodeMap = createTreeNode(rootNode);
 		// 將root node資料attribute放到 treeNode
-		store.add(treeNode, false);
-		preprocessNode(store, rootNode, treeNode);
+		store.add(rootNodeMap, false);
+		preprocessNode(store, rootNode, rootNodeMap);
 	}
 
 	/**
@@ -609,7 +588,7 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 
 			@Override
 			public void onBrowserEvent(com.google.gwt.user.client.Event event) {
-				if (event.getKeyCode() == 37) {
+				if (event.getKeyCode() == KeyCodes.KEY_LEFT) {
 					event.stopPropagation();
 				} else {
 					super.onBrowserEvent(event);
@@ -666,17 +645,17 @@ public abstract class gkXMLTreePanelIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 取得input中的vaule GWT中取得的value不是实时变化的.
+	 * 取得input中的vaule GWT中取得的value不是實時變化的
 	 * 
 	 * @return string
 	 */
-	private native String getvalue()/*-{
+	private native String getValue()/*-{
 		var a = $wnd.document.getElementById('newText');
 		return a.value;
 	}-*/;
 
 	/**
-	 * 修改名称后的更改TreeModel
+	 * 修改名稱後的更改TreeModel
 	 * 
 	 * @param value
 	 * @param tp

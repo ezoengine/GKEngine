@@ -16,7 +16,11 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
 import org.gk.engine.client.event.IEventConstants;
+import org.gk.ui.client.binding.gkComboBoxBinding;
+import org.gk.ui.client.binding.gkFieldBinding;
 import org.gk.ui.client.com.form.gkComboBox;
 import org.gk.ui.client.com.form.gkMap;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
@@ -41,9 +45,12 @@ public class ComboBoxBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		ComboBox cb = form.createComboBox(getField().getName());
-		initField(cb);
-		return cb;
+		ComboBox field = new gkComboBox();
+		gkFieldBinding fb = new gkComboBoxBinding(field, getField().getName(),
+				(Map) form.getInfo());
+		form.addFieldBinding(fb);
+		initField(field);
+		return field;
 	}
 
 	private void initField(ComboBox cb) {

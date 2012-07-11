@@ -27,25 +27,18 @@ import org.gk.ui.client.com.form.gkMap;
 import org.gk.ui.client.themes.AccessTheme;
 import org.gk.ui.client.themes.SlateTheme;
 
-import com.extjs.gxt.ui.client.Style.LayoutRegion;
 import com.extjs.gxt.ui.client.util.Theme;
 import com.extjs.gxt.ui.client.util.ThemeManager;
-import com.extjs.gxt.ui.client.widget.Layout;
-import com.extjs.gxt.ui.client.widget.LayoutContainer;
 import com.extjs.gxt.ui.client.widget.Viewport;
 import com.extjs.gxt.ui.client.widget.custom.ThemeSelector;
-import com.extjs.gxt.ui.client.widget.layout.BorderLayout;
-import com.extjs.gxt.ui.client.widget.layout.BorderLayoutData;
 import com.extjs.gxt.ui.client.widget.layout.FitLayout;
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.user.client.ui.RootPanel;
 
 public abstract class gkComponent implements EntryPoint {
 
 	protected static EventBusIfc bus = EventBus.get();
 	protected Viewport viewport = new Viewport();
-	protected LayoutContainer content = new LayoutContainer();
 	protected ThemeSelector selector = new ThemeSelector();
 	static {
 		// //設定預設的事件匯流排名稱為 module
@@ -70,14 +63,9 @@ public abstract class gkComponent implements EntryPoint {
 
 	@Override
 	public void onModuleLoad() {
-		viewport.setLayout(new BorderLayout());
-		viewport.add(content, new BorderLayoutData(LayoutRegion.CENTER));
+		viewport.setLayout(new FitLayout());
 		// 啟動AP的start方法
 		start();
-		if (content.getLayout() == null) {
-			content.setLayout(new FitLayout());
-		}
-		RootPanel.get().add(viewport);
 	}
 
 	public abstract void start();
@@ -126,17 +114,13 @@ public abstract class gkComponent implements EntryPoint {
 		return null;
 	}-*/;
 
-	protected void setLayout(Layout layout) {
-		content.setLayout(layout);
-	}
-
 	/**
 	 * 移除content裡面所有widget
 	 * 
 	 * @return boolean
 	 */
 	protected boolean removeAll() {
-		return content.removeAll();
+		return viewport.removeAll();
 	}
 
 	/**

@@ -163,11 +163,11 @@ public class TriggerField<D> extends TextField<D> {
 			el().setStyleName(readOnlyFieldStyle, readOnly);
 			if (editable || (readOnly && !editable)) {
 				getInputEl().dom.setPropertyBoolean("readOnly", readOnly);
-				// #############################################
-				getInputEl().setStyleAttribute("background",
-						readOnly ? "buttonface" : "");
-				// #############################################
 			}
+			// #############################################
+			getInputEl().setStyleAttribute("background",
+					readOnly ? "buttonface" : "");
+			// #############################################
 		}
 	}
 

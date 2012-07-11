@@ -42,6 +42,8 @@ public class gkToolBarIC extends ToolBar implements IC {
 
 	private FillToolItem fillItem = new FillToolItem();
 
+	private boolean msgVisible = true;
+
 	public gkToolBarIC() {
 		core = new CoreIC(this);
 		core.init();
@@ -74,13 +76,10 @@ public class gkToolBarIC extends ToolBar implements IC {
 	/**
 	 * 設定訊息欄位是否visible
 	 * 
-	 * @param visible
+	 * @param msgVisible
 	 */
-	public void setMsgVisible(boolean visible) {
-		if (!visible) {
-			msgBox.setVisible(visible);
-			label.setLabel("");
-		}
+	public void setMsgVisible(boolean msgVisible) {
+		this.msgVisible = msgVisible;
 	}
 
 	public void setMsgBox(String msg) {
@@ -111,12 +110,14 @@ public class gkToolBarIC extends ToolBar implements IC {
 	}
 
 	@Override
-	protected void onAttach() {
-		super.onAttach();
+	protected void onRender(Element target, int index) {
+		super.onRender(target, index);
 		// 最後才加上訊息欄位，讓訊息欄位可以保持在最右邊
-		add(fillItem);
-		add(label);
-		add(msgBox);
+		if (msgVisible) {
+			add(fillItem);
+			add(label);
+			add(msgBox);
+		}
 	}
 
 	@Override

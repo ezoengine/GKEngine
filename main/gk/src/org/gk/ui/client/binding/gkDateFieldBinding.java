@@ -14,36 +14,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.gk.engine.client.build.form.field;
+package org.gk.ui.client.binding;
 
-import org.gk.ui.client.com.form.gkTagFieldIC;
-import org.gk.ui.client.com.panel.gkFormPanelIC;
+import java.util.Date;
+import java.util.Map;
 
-import com.extjs.gxt.ui.client.widget.Component;
+import org.gk.ui.client.com.utils.DateTimeUtils;
+
+import com.extjs.gxt.ui.client.widget.form.DateField;
 import com.extjs.gxt.ui.client.widget.form.Field;
 
-public class TagFieldBuilder extends FormFieldBuilder {
+public class gkDateFieldBinding extends gkFieldBinding {
 
-	public TagFieldBuilder(String fieldType) {
-		super(fieldType);
+	public gkDateFieldBinding(Field field, String name, Map info) {
+		super(field, name, info);
 	}
 
 	@Override
-	public Component create() {
-		gkTagFieldIC field = new gkTagFieldIC(getField().getId());
-		initField(field);
-		return field;
+	public void execute(Object value) {
+		DateTimeUtils.setValue((DateField) field, value + "");
+		updateInfoValue(field.getValue());
 	}
 
 	@Override
-	public Component create(gkFormPanelIC form) {
-		gkTagFieldIC field = new gkTagFieldIC(getField().getId());
-		form.fieldBinding(field, getField().getName());
-		initField(field);
-		return field;
-	}
-
-	private void initField(Field field) {
-		field.setFieldLabel(getField().getLabel());
+	protected void updateInfoValue(Object value) {
+		info.put(name,
+				value == null ? "" : DateTimeUtils.formatDate((Date) value));
 	}
 }

@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.gk.engine.client.build.XComponent;
 import org.gk.engine.client.utils.IRegExpUtils;
+import org.gk.ui.client.com.form.gkDateField;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.extjs.gxt.ui.client.event.Events;
@@ -230,6 +231,7 @@ public abstract class XField extends XComponent {
 			addEventListener(field, Events.Change, onChange);
 			addEventListener(field, Events.Blur, onBlur);
 			addEventListener(field, Events.OnKeyUp, onKeyUp);
+
 			// 針對TriggerField增加額外判斷與onClick、onSelect事件
 			if (field instanceof TriggerField) {
 				TriggerField tf = (TriggerField) field;
@@ -238,7 +240,13 @@ public abstract class XField extends XComponent {
 				}
 				// TriggerField內部改寫接收onClick事件後，會發佈TriggerClick事件
 				addEventListener(tf, Events.TriggerClick, onClick);
-				addEventListener(tf, Events.Select, onSelect);
+				if (tf instanceof gkDateField) {
+					addEventListener(((gkDateField) field).getDatePicker(),
+							Events.Select, onSelect);
+				} else {
+					addEventListener(tf, Events.Select, onSelect);
+				}
+
 				// TwinTriggerField要多加一個TwinTrigger事件
 				if (field instanceof TwinTriggerField) {
 					addEventListener(field, Events.TwinTriggerClick,

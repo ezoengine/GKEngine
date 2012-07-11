@@ -16,7 +16,11 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
 import org.gk.engine.client.utils.IRegExpUtils;
+import org.gk.ui.client.binding.gkFieldBinding;
+import org.gk.ui.client.binding.gkNumberFieldBinding;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
 import com.extjs.gxt.ui.client.event.Events;
@@ -41,7 +45,10 @@ public class NumFieldBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		NumberField field = form.createNumberField(getField().getName());
+		NumberField field = new NumberField();
+		gkFieldBinding fb = new gkNumberFieldBinding(field, getField()
+				.getName(), (Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}

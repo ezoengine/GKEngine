@@ -18,6 +18,7 @@ package org.gk.engine.client.event.attrib;
 
 import com.extjs.gxt.ui.client.widget.Component;
 import com.extjs.gxt.ui.client.widget.ContentPanel;
+import com.extjs.gxt.ui.client.widget.form.FieldSet;
 
 /**
  * Heading屬性
@@ -33,6 +34,9 @@ public class HeadingAttribute implements IAttribute {
 		if (com instanceof ContentPanel) {
 			ContentPanel cp = (ContentPanel) com;
 			value = cp.getHeading();
+		} else if (com instanceof FieldSet) {
+			FieldSet fs = (FieldSet) com;
+			value = fs.getHeading();
 		}
 		return value;
 	}
@@ -42,6 +46,9 @@ public class HeadingAttribute implements IAttribute {
 		if (com instanceof ContentPanel) {
 			ContentPanel cp = (ContentPanel) com;
 			cp.setHeading((String) value);
+		} else if (com instanceof FieldSet) {
+			FieldSet fs = (FieldSet) com;
+			fs.setHeading((String) value);
 		}
 	}
 }

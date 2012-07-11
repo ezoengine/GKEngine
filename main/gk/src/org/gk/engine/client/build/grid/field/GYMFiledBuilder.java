@@ -19,6 +19,7 @@ package org.gk.engine.client.build.grid.field;
 import org.gk.engine.client.build.grid.XGridField;
 import org.gk.ui.client.com.form.gkYMField;
 import org.gk.ui.client.com.grid.column.gkYMColumnConfig;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.widget.form.Field;
 import com.extjs.gxt.ui.client.widget.grid.ColumnConfig;
@@ -35,18 +36,18 @@ public class GYMFiledBuilder extends GridFieldBuilder {
 		ColumnConfig cc = new gkYMColumnConfig(x) {
 			@Override
 			public void onField(Field field) {
+				setAttribute(field, x);
 				String value = x.getValue();
 				String format = x.getFormat();
 				if (field instanceof gkYMField) {
-					gkYMField f = (gkYMField) field;
-					if (!value.equals("")) {
-						f.setUseDate(value);
-					}
+					gkYMField ym = (gkYMField) field;
 					if (!format.equals("")) {
-						f.setFormat(format);
+						ym.setFormat(format);
+					}
+					if (!value.equals("")) {
+						DateTimeUtils.setValue(ym, value);
 					}
 				}
-				setAttribute(field, x);
 			}
 		};
 		return cc;

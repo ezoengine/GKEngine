@@ -58,11 +58,11 @@ public class ConsoleLogging implements ILogging {
 	}
 
 	private native boolean isSupported() /*-{
-		return ((window.console != null) && (window.console.firebug == null)
-				&& (window.console.log != null) && (typeof (window.console.log) == 'function'));
+		return (($wnd.console != null) && ($wnd.console.firebug == null)
+				&& ($wnd.console.log != null) && (typeof ($wnd.console.log) == 'function'));
 	}-*/;
 
 	private native void console(String message) /*-{
-		window.console.log(message);
+		$wnd.console.log(message);
 	}-*/;
 }

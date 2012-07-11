@@ -19,6 +19,7 @@ package org.gk.ui.client.com.grid.column;
 import org.gk.ui.client.com.form.gkDateField;
 import org.gk.ui.client.com.form.gkDateRangeField;
 import org.gk.ui.client.com.form.gkTimeField;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.data.ModelData;
 import com.extjs.gxt.ui.client.event.BaseEvent;
@@ -39,7 +40,7 @@ public abstract class gkDateRangeColumnConfig extends gkCellColumnConfig {
 	protected Field createColumnCell(final ModelData model, String property,
 			ListStore<ModelData> store, int rowIndex, int colIndex,
 			Grid<ModelData> grid) {
-		final gkDateRangeField drf = (gkDateRangeField) createField();
+		gkDateRangeField drf = (gkDateRangeField) createField();
 		LayoutContainer lc = (LayoutContainer) drf.getWidget();
 
 		for (int i = 0; i < lc.getItemCount(); i++) { // 取出layoutConatainer裡面的物件
@@ -47,18 +48,18 @@ public abstract class gkDateRangeColumnConfig extends gkCellColumnConfig {
 			if (obj instanceof gkDateField) { // 需要是field才作監聽動作
 				final gkDateField df = (gkDateField) obj;
 				// 如果重新render的時候，原本的就有值，要把那個值寫回去
-				if (model.get(df.getId()) != null
-						&& model.get(df.getId()).toString().length() != 0) {
-					df.setUseDate(model.get(df.getId()).toString());
+				Object value = model.get(df.getId());
+				if (value != null && value.toString().length() != 0) {
+					DateTimeUtils.setValue(df, value.toString());
 				} else {
-					model.set(df.getId(), df.getUseDate());
+					model.set(df.getId(), DateTimeUtils.getValue(df));
 				}
 				// 監聽事件
 				df.addListener(Events.Change, new Listener<BaseEvent>() {
 
 					@Override
 					public void handleEvent(BaseEvent be) {
-						model.set(df.getId(), df.getUseDate());
+						model.set(df.getId(), DateTimeUtils.getValue(df));
 					}
 				});
 

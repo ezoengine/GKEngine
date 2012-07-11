@@ -44,13 +44,11 @@ import org.gk.engine.client.build.form.field.YMFieldBuilder;
 import org.gk.engine.client.build.frame.FrameBuilder;
 import org.gk.engine.client.build.grid.GridBuilder;
 import org.gk.engine.client.build.grid.field.GAdaptFieldBuilder;
-import org.gk.engine.client.build.grid.field.GAggregationRowBuilder;
 import org.gk.engine.client.build.grid.field.GButtonBuilder;
 import org.gk.engine.client.build.grid.field.GCheckBoxBuilder;
 import org.gk.engine.client.build.grid.field.GComboBoxBuilder;
 import org.gk.engine.client.build.grid.field.GDateFiledBuilder;
 import org.gk.engine.client.build.grid.field.GDateRangeFieldBuilder;
-import org.gk.engine.client.build.grid.field.GHeaderGroupBuilder;
 import org.gk.engine.client.build.grid.field.GICBuilder;
 import org.gk.engine.client.build.grid.field.GImageFieldBuilder;
 import org.gk.engine.client.build.grid.field.GLabelFieldBuilder;
@@ -130,7 +128,6 @@ public class BuilderFactory {
 		builders.add(new FieldSetBuilder("fieldSet"));
 		builders.add(new TreeBuilder("tree"));
 		builders.add(new TreeDirBuilder("dir"));
-		// builders.add(new TreeGridBuilder("treeGrid")); 廢棄不用
 		return builders;
 	}
 
@@ -173,12 +170,8 @@ public class BuilderFactory {
 		builders.add(new SpinnerFieldBuilder("spin"));
 		builders.add(new ImageFieldBuilder("img"));
 		builders.add(new TriggerFieldBuilder("trigger"));
-		// builders.add(new ListFieldBuilder("list")); 廢棄不用
 		// 以下builder為form有，grid沒有
-		// builders.add(new HtmlEditorBuilder("editor")); 廢棄不用
-		// builders.add(new TwinTriggerFieldBuilder("twintrigger")); 廢棄不用
 		builders.add(new FileUploadFieldBuilder("file"));
-		// builders.add(new TagFieldBuilder("tag")); 廢棄不用
 		return builders;
 	}
 
@@ -194,9 +187,9 @@ public class BuilderFactory {
 		builders.add(new GButtonBuilder("btn"));
 		builders.add(new GNumFieldBuilder("num"));
 		builders.add(new GAdaptFieldBuilder("adapt"));
-		builders.add(new GCheckBoxBuilder("checkBox"));
-		builders.add(new GRadioBuilder("radioBox"));
-		builders.add(new GTextAreaBuilder("textarea"));
+		builders.add(new GCheckBoxBuilder("check,checkBox"));
+		builders.add(new GRadioBuilder("radio,radioBox"));
+		builders.add(new GTextAreaBuilder("textArea"));
 		builders.add(new GDateFiledBuilder("date"));
 		builders.add(new GTimeFieldBuilder("time"));
 		builders.add(new GYMFiledBuilder("ym"));
@@ -206,11 +199,8 @@ public class BuilderFactory {
 		builders.add(new GSpinnerFieldBuilder("spin"));
 		builders.add(new GImageFieldBuilder("img"));
 		builders.add(new GTriggerFieldBuilder("trigger"));
-		// builders.add(new GListFieldBuilder("list")); 廢棄不用
 		// 以下builder為grid有，form沒有
 		builders.add(new GICBuilder("ic"));
-		builders.add(new GHeaderGroupBuilder("header"));
-		builders.add(new GAggregationRowBuilder("aggRow"));
 		return builders;
 	}
 }

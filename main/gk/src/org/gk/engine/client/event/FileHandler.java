@@ -16,6 +16,8 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.List;
+
 import org.gk.engine.client.build.XComponent;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
@@ -29,9 +31,9 @@ import com.extjs.gxt.ui.client.event.BaseEvent;
 public class FileHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
-		loadFile(content, xCom);
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
+		loadFile(prepareEventId(sources), xCom);
 	}
 
 	private static native void loadFile(String eventId, XComponent xCom)/*-{

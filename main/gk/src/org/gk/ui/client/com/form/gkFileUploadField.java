@@ -31,6 +31,7 @@ import org.gk.ui.client.icon.Icons;
 import com.extjs.gxt.ui.client.Style.VerticalAlignment;
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.extjs.gxt.ui.client.event.ButtonEvent;
+import com.extjs.gxt.ui.client.event.ComponentEvent;
 import com.extjs.gxt.ui.client.event.Events;
 import com.extjs.gxt.ui.client.event.Listener;
 import com.extjs.gxt.ui.client.event.SelectionListener;
@@ -44,7 +45,7 @@ public class gkFileUploadField extends AdapterField {
 
 	protected HorizontalPanel hp;
 	protected HorizontalPanel linkPanel;
-	protected static Button uploadButton;
+	protected Button uploadButton;
 	protected String beanName = "";
 
 	public gkFileUploadField() {
@@ -86,6 +87,7 @@ public class gkFileUploadField extends AdapterField {
 		hp.add(linkPanel);
 	}
 
+
 	private void initFileUploadBean() {
 		String gkData = getData(StringUtils.DATA);
 		if (gkData == null || gkData.equals("")) {
@@ -124,10 +126,13 @@ public class gkFileUploadField extends AdapterField {
 	}
 
 	private void refreshLinkPanel(List links) {
+
 		linkPanel.removeAll();
-		if (isReadOnly()) {
+
+		if (isReadOnly() || !isEnabled()) {
 			uploadButton.disable();
 		}
+
 		for (int i = 0; i < links.size(); i++) {
 			Map map = (Map) links.get(i);
 			String fileName = (String) map.get("name");
@@ -142,7 +147,7 @@ public class gkFileUploadField extends AdapterField {
 			gkImageField image = new gkImageField(Icons.get.cross()
 					.getSafeUri().asString());
 
-			if (!isReadOnly()) {
+			if (!isReadOnly() && isEnabled()) {
 				image.addListener(Events.OnClick, new Listener<BaseEvent>() {
 
 					@Override
@@ -164,12 +169,21 @@ public class gkFileUploadField extends AdapterField {
 					}
 				});
 			} else {
-				image.setText(Icons.get.text().getSafeUri().asString());
+				image = new gkImageField(Icons.get.text().getSafeUri()
+						.asString()) {
+					@Override
+					protected void onMouseOver(ComponentEvent ce) {
+						//
+					}
+				};
 			}
 
-			Anchor anchor = new Anchor(fileName, "event/put/def/" + beanName
-					+ gkFileUploadPanel.Event.DOWNLOAD + ".go?id=" + id,
-					"_blank");
+			Anchor anchor = new Anchor(fileName);
+			if (isEnabled()) {
+				anchor.setHref("event/put/def/" + beanName
+						+ gkFileUploadPanel.Event.DOWNLOAD + ".go?id=" + id);
+				anchor.setTarget("_blank");
+			}
 			linkPanel.add(image);
 			linkPanel.add(anchor);
 		}
@@ -183,4 +197,24 @@ public class gkFileUploadField extends AdapterField {
 	public void setBeanName(String beanName) {
 		this.beanName = beanName;
 	}
+
+	@Override
+	public void setReadOnly(boolean readOnly) {
+		super.readOnly = readOnly;
+		reloadFileList();
+	}
+
+	@Override
+	public void setEnabled(boolean enabled) {
+		super.setEnabled(enabled);
+		reloadFileList();
+	}
+
+	private void reloadFileList() {
+		uploadButton.enable();
+		if (isRendered()) {
+			loadFileList();
+		}
+	}
+
 }

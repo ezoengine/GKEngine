@@ -127,10 +127,11 @@ public class gkHtmlContainer extends HtmlContainer {
 				var scrStart = scriptTxt.indexOf('>') + 1;
 				var scrEnd = scriptTxt.lastIndexOf('<');
 				scriptTxt = scriptTxt.substring(scrStart, scrEnd);
-				var script = document.createElement("script");
+				var script = $doc.createElement("script");
 				script.text = scriptTxt;
-
-				document.getElementsByTagName("head")[0].appendChild(script);
+				var header = $doc.getElementsByTagName("head")[0];
+				header.appendChild(script);
+				header.removeChild(script);
 				html = html.replace(reg, "");
 			}
 		}
@@ -158,9 +159,11 @@ public class gkHtmlContainer extends HtmlContainer {
 				} else {
 					scriptTxt = scriptTxt.substring(0, x2);
 				}
-				var script = document.createElement("script");
+				var script = $doc.createElement("script");
 				script.src = scriptTxt;
-				document.getElementsByTagName("head")[0].appendChild(script);
+				var header = $doc.getElementsByTagName("head")[0];
+				header.appendChild(script);
+				header.removeChild(script);
 				html = html.replace(reg, "");
 			}
 		}

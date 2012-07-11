@@ -134,11 +134,11 @@ public abstract class gkComboBoxColumnConfig extends gkCellColumnConfig {
 
 		Object value = model.get(property);
 		if (value != null) {
-			if (value instanceof String) {
-				cb.setValue(cb.getPropertyEditor().convertStringValue(
-						(String) value));
-			} else {
+			if (value instanceof ModelData) {
 				cb.setValue((ModelData) value);
+			} else {
+				cb.setValue(cb.getPropertyEditor().convertStringValue(
+						value.toString()));
 			}
 		} else {
 			ModelData md = cb.getValue();

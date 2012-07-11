@@ -27,6 +27,7 @@ import org.gk.ui.client.com.IC;
 import org.gk.ui.client.com.grid.column.gkICColumnConfig;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
+import com.extjs.gxt.ui.client.core.XDOM;
 import com.extjs.gxt.ui.client.data.ModelData;
 import com.extjs.gxt.ui.client.store.ListStore;
 import com.extjs.gxt.ui.client.widget.Component;
@@ -37,6 +38,7 @@ import com.extjs.gxt.ui.client.widget.grid.ColumnData;
 import com.extjs.gxt.ui.client.widget.grid.Grid;
 import com.extjs.gxt.ui.client.widget.grid.GridCellRenderer;
 import com.google.gwt.xml.client.Document;
+import com.google.gwt.xml.client.Element;
 import com.google.gwt.xml.client.Node;
 import com.google.gwt.xml.client.NodeList;
 
@@ -47,7 +49,6 @@ import com.google.gwt.xml.client.NodeList;
  * @since 2010/11/15
  */
 public class GAdaptFieldBuilder extends GridFieldBuilder {
-	public final static String CLASS_VERSION = "$Revision: 1.12 $ $Date: 2012/02/20 01:39:47 $";
 
 	public GAdaptFieldBuilder(String fieldType) {
 		super(fieldType);
@@ -118,6 +119,8 @@ public class GAdaptFieldBuilder extends GridFieldBuilder {
 		form.append(" hideLabels='true' id='").append(x.getId()).append("_")
 				.append(rowIndex).append("'>");
 		form.append("<field type='adapt' ");
+		form.append("id='").append(x.getId()).append("_").append(rowIndex)
+				.append("_").append(colIndex).append("' ");
 		form.append("vertical='").append(vertical).append("' ");
 		form.append("space='").append(space).append("' ");
 		form.append("adaptingrid='true' "); // 給AdaptFieldBuilder判斷是否在Grid中
@@ -129,7 +132,7 @@ public class GAdaptFieldBuilder extends GridFieldBuilder {
 		// 將gul裡面field's id 改為 id_rowIndex，自動增列才能正常使用
 		gul = setFieldIdAndVerify(form.toString(), rowIndex);
 
-		String id = grid.getId() + "_" + rowIndex + "_" + colIndex;
+		String id = rowIndex + "_" + colIndex;
 		LayoutContainer lc = new LayoutContainer();
 		lc.setId(id);
 		Engine.get().renderPanel(gul, lc);
@@ -149,6 +152,7 @@ public class GAdaptFieldBuilder extends GridFieldBuilder {
 	 * </pre>
 	 * 
 	 * @param gul
+	 * @param rowIdx
 	 * @return String
 	 */
 	private String setFieldIdAndVerify(String gul, int rowIdx) {
@@ -170,10 +174,13 @@ public class GAdaptFieldBuilder extends GridFieldBuilder {
 			if (type == null || type.getNodeValue().equals("adapt")) {
 				throw new RuntimeException("attribute error:" + type);
 			}
+			// 沒有設定id就幫忙設定，以便detach後，Engine可以刪除
 			if (id == null) {
-				continue; // 沒有設定id就不用處理 id + '_'+rowIndex
+				((Element) field).setAttribute("id", XDOM.getUniqueId() + "_"
+						+ rowIdx);
+			} else {
+				id.setNodeValue(id.getNodeValue() + "_" + rowIdx);
 			}
-			id.setNodeValue(id.getNodeValue() + "_" + rowIdx);
 		}
 		return doc + "";
 	}

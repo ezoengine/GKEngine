@@ -28,7 +28,6 @@ import org.gk.engine.client.build.panel.XFieldSet;
 import org.gk.engine.client.event.EventCenter;
 import org.gk.engine.client.gen.UIGen;
 import org.gk.engine.client.utils.IRegExpUtils;
-import org.gk.engine.client.utils.StringUtils;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 import org.gk.ui.client.com.utils.LayoutUtils;
 
@@ -132,13 +131,6 @@ public class XForm extends XContentPanel {
 		if (!hideLabels.equals("")) {
 			form.setHideLabels(Boolean.parseBoolean(hideLabels));
 		}
-	}
-
-	@Override
-	public void onInfo(String eventId, String content) {
-		EventObject eo = StringUtils.toEventObject(eventId, content);
-		bus.publish(new EventObject(id + gkFormPanelIC.Event.SET_INFO, eo
-				.getInfo()));
 	}
 
 	/**

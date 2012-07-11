@@ -16,11 +16,14 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.Iterator;
+import java.util.List;
+
 import org.gk.engine.client.build.XComponent;
+import org.gk.engine.client.event.EventValue.Type;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.google.gwt.core.client.JavaScriptObject;
-import com.google.gwt.core.client.JsArrayString;
 
 /**
  * Com事件處理器
@@ -31,32 +34,56 @@ import com.google.gwt.core.client.JsArrayString;
 public class ComHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
-		JsArrayString split = splitContent(content);
-		if (split.length() == 2) {
-			doProcess(split.get(0), split.get(1), be);
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
+		if (targets.isEmpty()) {
+			EventValue ev = new EventValue();
+			ev.setContent(xComId);
+			ev.setType(Type.ID);
+			targets.add(ev);
+			doProcess(targets, sources, be);
 		} else {
-			doProcess(xComId, split.get(0), be);
+			doProcess(sources, targets, be);
 		}
 	}
 
-	private void doProcess(String source, String target, BaseEvent be) {
-		Object value = getValue(source);
-		if (value == null) {
-			if (source.startsWith("!")) {
-				value = reverseValue(getAttributeValue(source.replaceFirst("!",
-						"")));
+	private void doProcess(List sources, List targets, BaseEvent be) {
+		Object value = null;
+		if (!sources.isEmpty()) {
+			Object obj = sources.get(0);
+			EventValue ev;
+			if (obj instanceof EventValue) {
+				ev = (EventValue) obj;
 			} else {
-				value = getAttributeValue(source);
+				ev = EventFactory.convertToEventValue(sources.get(0));
+			}
+			String content = ev.getContent();
+			if (ev.getType() == Type.EXPR) {
+				value = eval(content);
+			} else if (ev.getType() == Type.ID) {
+				value = getAttributeValue(content);
+				if (content.startsWith("!")) {
+					value = reverseValue(getAttributeValue(content
+							.replaceFirst("!", "")));
+				} else if (content.startsWith(IEventConstants.TYPE_DATA)) {
+					value = content.substring(1);
+				}
+			} else if (ev.getType() == Type.STRING) {
+				value = content;
 			}
 		}
-		if (value != null) {
-			String[] comma = target.split(IEventConstants.SPLIT_COMMA);
-			for (String id : comma) {
+
+		if (value != null && !targets.isEmpty()) {
+			for (Iterator it = targets.iterator(); it.hasNext();) {
+				EventValue ev = EventFactory.convertToEventValue(it.next());
+				String id = ev.getContent();
+				if (ev.getType() == Type.EXPR) {
+					id = eval(ev.getContent()) + "";
+				}
 				setAttributeValue(id, value);
 			}
 		}
+
 		if (be != null && be.getSource() instanceof JavaScriptObject) {
 			JavaScriptObject func = (JavaScriptObject) be.getSource();
 			invokeFunction(func, value);
@@ -82,15 +109,4 @@ public class ComHandler extends EventHandler {
 		}
 		return result;
 	}
-
-	private native JsArrayString splitContent(String content)/*-{
-		content = content.replace('}:', '}&');
-		if (content.indexOf('&') == -1) {
-			content = content.replace(']:', ']&');
-			if (content.indexOf('&') == -1) {
-				content = content.replace(':', '&');
-			}
-		}
-		return content.split('&');
-	}-*/;
 }

@@ -16,6 +16,7 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -122,18 +123,14 @@ public abstract class EventHandler implements IHandler {
 	 * 此方法由EventCenter調用，開始執行事件解析 指派對應的Handler進行處理
 	 * 
 	 * @param xComId
-	 * @param content
+	 * @param ed
 	 * @param xCom
 	 * @param be
 	 */
-	public static void doProcess(String xComId, String content,
-			XComponent xCom, BaseEvent be) {
-		String[] args = content.split(IEventConstants.SPLIT_COLON);
-		String cmd = args[0];
-		IHandler handler = EventHandler.getHandler(cmd);
-		handler.process(xComId,
-				content.replaceFirst(cmd + IEventConstants.SPLIT_COLON, ""),
-				xCom, be);
+	public static void doProcess(String xComId, EventData ed, XComponent xCom,
+			BaseEvent be) {
+		IHandler handler = EventHandler.getHandler(ed.getCmd());
+		handler.process(xComId, ed.getSources(), ed.getTargets(), xCom, be);
 	}
 
 	/**
@@ -238,22 +235,90 @@ public abstract class EventHandler implements IHandler {
 		setAttributeValue(com, IEventConstants.ATTRIB_VALUE, value);
 	}
 
+	protected Object eval(String content) {
+		Object result = null;
+		if (JsonConvert.isJSONString(content)) {
+			result = JsonConvert.jsonString2Object(content);
+		} else {
+			result = doEval(content);
+		}
+		return result;
+	}
+
+	private native static Object doEval(String content)/*-{
+		var result = $wnd.eval(content);
+		if (typeof (result) == 'boolean') {
+			result = @java.lang.Boolean::valueOf(Z)(result);
+		} else if (typeof (result) == 'number') {
+			result = @java.lang.Double::valueOf(D)(result);
+		}
+		return result;
+	}-*/;
+
 	/**
-	 * 根據content，解析並取得Map
+	 * 將傳入的events，根據類型合併成一eventId字串
 	 * 
-	 * @param content
-	 * @return Map
+	 * @param events
+	 * @return String
 	 */
-	protected Map getInfo(String content) {
-		Map data = new gkMap();
-		String[] comma = content.split(IEventConstants.SPLIT_COMMA);
-		for (int i = 0; i < comma.length; i++) {
-			Object value = getAttributeValue(comma[i]);
-			if (value != null) {
-				data.put(comma[i], value);
+	protected String prepareEventId(List events) {
+		StringBuffer eventId = new StringBuffer("");
+		if (!events.isEmpty()) {
+			for (Object value : events) {
+				EventValue ev = EventFactory.convertToEventValue(value);
+				String content = ev.getContent();
+				switch (ev.getType()) {
+				case EXPR:
+					eventId.append(eval(content));
+					break;
+				case ID:
+					if (content.matches("\\w+\\.\\w+")) {
+						eventId.append(content);
+					} else {
+						eventId.append(getAttributeValue(content));
+					}
+					break;
+				case STRING:
+					eventId.append(content);
+				default:
+					break;
+				}
 			}
 		}
-		return data;
+		return eventId.toString();
+	}
+
+	/**
+	 * 將傳入的events，根據類型整理並存入Map資料中
+	 * 
+	 * @param srcId
+	 * @param events
+	 * @return Map
+	 */
+	protected Map prepareInfo(String srcId, List events) {
+		Map info = new gkMap();
+		// 記錄此遠端事件是由哪個ComponentId發起的
+		info.put("src", srcId);
+		info.put("url", getURL());
+		if (!events.isEmpty()) {
+			for (Iterator it = events.iterator(); it.hasNext();) {
+				EventValue ev = EventFactory.convertToEventValue(it.next());
+				String content = ev.getContent();
+				switch (ev.getType()) {
+				case EXPR:
+					info.put(srcId, eval(content));
+					break;
+				case ID:
+					info.put(content, getAttributeValue(content));
+					break;
+				case STRING:
+					info.put(srcId, content);
+				default:
+					break;
+				}
+			}
+		}
+		return info;
 	}
 
 	/**
@@ -264,26 +329,6 @@ public abstract class EventHandler implements IHandler {
 	public static native String getURL()/*-{
 		return $wnd.location.href;
 	}-*/;
-
-	/**
-	 * 判斷是否為json字串或一般字串，並取得其值
-	 * 
-	 * @param str
-	 * @return Object
-	 */
-	protected Object getValue(String str) {
-		Object value = null;
-		if (JsonConvert.isJSONString(str)) {
-			value = JsonConvert.jsonString2Object(str);
-		} else if (str.matches("^('|\"|#).*(('|\")$)?")) {
-			if (str.startsWith("#")) {
-				value = str.replaceFirst("#", "");
-			} else {
-				value = str.replaceAll("'|\"", "");
-			}
-		}
-		return value;
-	}
 
 	/**
 	 * 調用JavaScript的function

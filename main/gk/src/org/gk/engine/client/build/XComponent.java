@@ -27,6 +27,7 @@ import org.gk.engine.client.event.EventListener;
 import org.gk.engine.client.gen.UIGen;
 import org.gk.engine.client.utils.IRegExpUtils;
 import org.gk.engine.client.utils.NodeUtils;
+import org.gk.ui.client.com.IC;
 
 import com.extjs.gxt.ui.client.core.XDOM;
 import com.extjs.gxt.ui.client.event.BaseEvent;
@@ -244,15 +245,23 @@ public abstract class XComponent implements UIGen {
 	 * 回傳的資訊 (目前已完成檔案讀取)
 	 * 
 	 * <pre>
-	 * 當元件有設定init屬性時，此方法會被調用， 注入取得的資訊
+	 * 當元件有設定動態語法File時，此方法會被調用， 注入取得的資訊
 	 * </pre>
 	 * 
 	 * @param eventId
 	 * @param content
 	 */
 	public void onInfo(String eventId, String content) {
-		// 如果需要的話，可透過下面這一行，將字串轉成EventObject
-		// EventObject eo = StringUtils.toEventObject(eventId, content);
+		Object info;
+		if (JsonConvert.isJSONString(content)) {
+			info = JsonConvert.jsonString2Object(content);
+		} else {
+			info = content;
+		}
+		Component com = getComponent();
+		if (com instanceof IC) {
+			((IC) com).setInfo(info);
+		}
 	}
 
 	/**

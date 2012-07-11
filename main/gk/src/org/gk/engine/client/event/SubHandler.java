@@ -16,9 +16,11 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.List;
 import java.util.Map;
 
 import org.gk.engine.client.build.XComponent;
+import org.gk.engine.client.event.EventValue.Type;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.google.gwt.core.client.JavaScriptObject;
@@ -32,8 +34,8 @@ import com.google.gwt.core.client.JavaScriptObject;
 public class SubHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
 		JavaScriptObject jso = null;
 		if (be != null) {
 			Object obj = be.getSource();
@@ -41,21 +43,31 @@ public class SubHandler extends EventHandler {
 				jso = (JavaScriptObject) obj;
 			}
 		}
-		subscribe(xComId, content, jso);
+
+		StringBuffer targetId = new StringBuffer("");
+		if (!targets.isEmpty()) {
+			EventValue ev = EventFactory.convertToEventValue(targets.get(0));
+			String value = ev.getContent();
+			if (ev.getType() == Type.EXPR) {
+				targetId.append(eval(value));
+			} else if (ev.getType() == Type.ID) {
+				targetId.append(value);
+			}
+		}
+		subscribe(xComId, prepareEventId(sources), targetId.toString(), jso);
 	}
 
-	private void subscribe(final String xComId, String content,
-			final JavaScriptObject jso) {
-		final String colon[] = content.split(IEventConstants.SPLIT_COLON);
-		EventCenter.subscribe(xComId, colon[0], new ISubscriber() {
+	private void subscribe(final String xComId, String eventId,
+			final String key, final JavaScriptObject jso) {
+		EventCenter.subscribe(xComId, eventId, new ISubscriber() {
 
 			@Override
 			public void execute(Object info) {
 				// 預期Pub資訊應該是Map型別
 				if (info instanceof Map) {
 					Map map = (Map) info;
-					if (colon.length == 2) {
-						Object value = map.get(colon[1]);
+					if (key.length() > 0) {
+						Object value = map.get(key);
 						setAttributeValue(xComId, value);
 					}
 					// 如果前端gk.event有傳入callback function，則進行調用

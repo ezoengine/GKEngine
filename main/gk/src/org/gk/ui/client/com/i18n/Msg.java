@@ -41,9 +41,6 @@ public interface Msg extends Messages {
 	@DefaultMessage("開始上傳")
 	String startUpload();
 
-	@DefaultMessage("上傳成功")
-	String uploadSucceess();
-
 	@DefaultMessage("上傳失敗")
 	String uploadError();
 
@@ -52,9 +49,6 @@ public interface Msg extends Messages {
 
 	@DefaultMessage("確定要")
 	String areuSure();
-
-	@DefaultMessage("增列")
-	String autoAddRow();
 
 	@DefaultMessage("pageSize")
 	String pageSize();
@@ -74,59 +68,11 @@ public interface Msg extends Messages {
 	@DefaultMessage("刪除")
 	String delete();
 
-	@DefaultMessage("檔案名稱")
-	String filename();
-
-	@DefaultMessage("進展")
-	String progress();
-
-	@DefaultMessage("檔案大小")
-	String filesize();
-
-	@DefaultMessage("1月")
-	String January();
-
-	@DefaultMessage("2月")
-	String February();
-
-	@DefaultMessage("3月")
-	String March();
-
-	@DefaultMessage("4月")
-	String April();
-
-	@DefaultMessage("5月")
-	String May();
-
-	@DefaultMessage("6月")
-	String June();
-
-	@DefaultMessage("7月")
-	String July();
-
-	@DefaultMessage("8月")
-	String August();
-
-	@DefaultMessage("9月")
-	String September();
-
-	@DefaultMessage("10月")
-	String October();
-
-	@DefaultMessage("11月")
-	String November();
-
-	@DefaultMessage("12月")
-	String December();
-
 	@DefaultMessage("民國")
 	String chineseYear();
 
 	@DefaultMessage("西元")
 	String yearTitle();
-
-	@DefaultMessage("月")
-	String month();
 
 	@DefaultMessage("本月")
 	String thisMonth();

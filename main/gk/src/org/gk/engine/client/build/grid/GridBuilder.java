@@ -49,21 +49,10 @@ public class GridBuilder extends Builder {
 		for (int i = 0; i < nodes.getLength(); i++) {
 			Node n = nodes.item(i);
 			String nName = n.getNodeName();
-			// 如果是元件庫元件,就將此Node取代成元件庫的元件
-			if (ComLibrary.contains(nName)) {
-				ComLibrary.overrideNode(n);
-				NodeList nlist = ComLibrary.replaceNode(nName, n);
-				addField(uiGenList, fields, nlist);
-			} else {
-				addField(uiGenList, fields, n);
+			if (nName.endsWith("#text") || nName.endsWith("#comment")) {
+				continue;
 			}
-		}
-	}
-
-	private void addField(List<UIGen> uiGenList, List fields, NodeList nodes) {
-		// 如果子節點是<field/>就放入List
-		for (int i = 0; i < nodes.getLength(); i++) {
-			addField(uiGenList, fields, nodes.item(i));
+			addField(uiGenList, fields, n);
 		}
 	}
 
@@ -76,13 +65,24 @@ public class GridBuilder extends Builder {
 			NodeList nList = XMLParser.parse("<root>" + gulSyntax + "</root>")
 					.getFirstChild().getChildNodes();
 			pickupFieldByNodes(uiGenList, fields, nList);
-		} else if (nName.startsWith("field") || nName.startsWith("header")
+		} else if (nName.startsWith("field") || nName.startsWith("headergroup")
 				|| nName.startsWith("aggrow")) {
-			XGridField field = new XGridField(node);
-			if (nName.startsWith("header") || nName.startsWith("aggrow")) {
-				field.setType(nName);
+			UIGen ui;
+			if (nName.startsWith("headergroup")) {
+				ui = new XHeaderGroup(node);
+			} else if (nName.startsWith("aggrow")) {
+				ui = new XAggRow(node);
+			} else {
+				ui = new XGridField(node);
 			}
-			fields.add(field);
+			fields.add(ui);
+		} else if (ComLibrary.contains(nName)) {
+			ComLibrary.overrideNode(node);
+			// 如果是元件庫元件,就將此Node取代成元件庫的元件
+			NodeList nlist = ComLibrary.replaceNode(nName, node);
+			for (int i = 0; i < nlist.getLength(); i++) {
+				addField(uiGenList, fields, nlist.item(i));
+			}
 		}
 	}
 }

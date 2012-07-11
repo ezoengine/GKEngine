@@ -16,7 +16,10 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.List;
+
 import org.gk.engine.client.build.XComponent;
+import org.gk.engine.client.event.EventValue.Type;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.google.gwt.user.client.Window;
@@ -30,11 +33,17 @@ import com.google.gwt.user.client.Window;
 public class ShowHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
-		String[] comma = content.split(IEventConstants.SPLIT_COMMA);
-		for (String id : comma) {
-			Window.alert(getAttributeValue(id) + "");
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
+		if (!sources.isEmpty()) {
+			for (Object value : sources) {
+				EventValue ev = EventFactory.convertToEventValue(value);
+				String id = ev.getContent();
+				if (ev.getType() == Type.EXPR) {
+					id = eval(ev.getContent()) + "";
+				}
+				Window.alert(getAttributeValue(id) + "");
+			}
 		}
 	}
 }

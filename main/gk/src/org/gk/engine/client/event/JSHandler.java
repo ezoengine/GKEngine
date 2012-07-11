@@ -16,6 +16,7 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.List;
 import java.util.Map;
 
 import jfreecode.gwt.event.client.bus.JsonConvert;
@@ -42,34 +43,56 @@ import com.extjs.gxt.ui.client.event.TreePanelEvent;
 public class JSHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
 		// 如果源頭是FieldEvent，就取得來源欄位實際的id，因為Field在Grid 裡面會加上序號
 		// (參考 gkTextColumnConfig 類別)，所以必須取得設定的真正id
 		if (be instanceof FieldEvent) {
 			xComId = ((FieldEvent) be).getBoxComponent().getId();
 		}
 		XJavaScript xJavaScript;
-		// 若content為「this」，則表示直接執行本身內的script，不透過事件觸發
-		if (content.equals("this")) {
-			content = xComId;
+		StringBuffer content = new StringBuffer("");
+		boolean isScript = false;
+		if (!sources.isEmpty()) {
+			EventValue ev = EventFactory.convertToEventValue(sources.get(0));
+			String value = ev.getContent();
+			switch (ev.getType()) {
+			case ID:
+				// 若value為「this」，則表示直接執行本身內的script，不透過事件觸發
+				if ("this".equals(value)) {
+					content.append(xComId);
+				} else if (value.startsWith(IEventConstants.TYPE_DATA)) {
+					// 若為「#」開頭，則表示後面整段都是要執行的script
+					content.append(value.substring(1));
+					isScript = true;
+				} else {
+					content.append(value);
+				}
+				break;
+			case EXPR:
+				content.append(eval(value));
+				break;
+			case STRING:
+				content.append(value);
+				isScript = true;
+				break;
+			default:
+				break;
+			}
 		}
-		// 若為「#」、「"」與「'」開頭，則表示後面整段都是要執行的script
-		if (content.startsWith(IEventConstants.TYPE_DATA)) {
-			xJavaScript = new XJavaScript(content.substring(1));
-		} else if (content.startsWith("\"") || content.startsWith("'")) {
-			xJavaScript = new XJavaScript(content.substring(1,
-					content.length() - 1));
+
+		if (isScript) {
+			xJavaScript = new XJavaScript(content.toString());
 		} else {
-			UIGen uiGen = EngineDataStore.getUIGenNode(content);
+			UIGen uiGen = EngineDataStore.getUIGenNode(content.toString());
 			if (uiGen == null || !(uiGen instanceof XJavaScript)) {
 				throw new GKEngineException(
-						EngineMessages.msg.error_jsNotFound(content));
+						EngineMessages.msg.error_jsNotFound(content.toString()));
 			}
 			xJavaScript = (XJavaScript) uiGen;
 			xJavaScript.setComId(xComId);
 		}
-		// 重新產生xJavaScript必須重新註冊 JSMethod方法,因為原先的會被移除掉
+		// 重新產生xJavaScript必須重新註冊 JSMethod方法，因為原先的會被移除掉
 		xJavaScript.initJSMethod(xJavaScript);
 		// 如果是拖拉事件，轉型為DNDEvent取得源頭資料
 		if (be instanceof DNDEvent) {

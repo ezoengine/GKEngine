@@ -43,4 +43,6 @@ public interface gkColumnInfo {
 	public void execEventCenter(String id, String initCmd, Object obj);
 
 	public void addComponentToStore(String id, Object obj);
+	
+	public boolean removeComponentFromStore(String id);
 }

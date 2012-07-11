@@ -39,7 +39,6 @@ import com.extjs.gxt.ui.client.store.ListStore;
 import com.extjs.gxt.ui.client.widget.Dialog;
 import com.extjs.gxt.ui.client.widget.HorizontalPanel;
 import com.extjs.gxt.ui.client.widget.Layout;
-import com.extjs.gxt.ui.client.widget.MessageBox;
 import com.extjs.gxt.ui.client.widget.ProgressBar;
 import com.extjs.gxt.ui.client.widget.button.Button;
 import com.extjs.gxt.ui.client.widget.form.FileUploadField;
@@ -58,7 +57,6 @@ public class gkFileUploadPanel {
 	private Dialog myDialog;
 	private gkListGridIC listGrid;
 	private Button startUpload;
-	private MessageBox box;
 	private List fileUploadList = Collections.EMPTY_LIST;
 
 	private String fileType;
@@ -115,21 +113,11 @@ public class gkFileUploadPanel {
 		formPanel.setEncoding(Encoding.MULTIPART);
 		formPanel.setMethod(Method.POST);
 
-		formPanel.addListener(Events.BeforeSubmit, new Listener<FormEvent>() {
-
-			@Override
-			public void handleEvent(FormEvent be) {
-				box = MessageBox.wait("", "Upload your file, please wait...",
-						"Uploading...");
-			}
-		});
-
 		final HTML uploadStatus = new HTML();
 		formPanel.addListener(Events.Submit, new Listener<FormEvent>() {
 
 			@Override
 			public void handleEvent(FormEvent be) {
-				box.close();
 				startUpload.setEnabled(false);
 				if (be.getResultHtml() == null
 						|| be.getResultHtml().trim().equals("")) {

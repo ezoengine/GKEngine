@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import jfreecode.gwt.event.client.bus.EventBus;
 import jfreecode.gwt.event.client.bus.EventObject;
 import jfreecode.gwt.event.client.bus.EventProcess;
 
@@ -36,7 +35,6 @@ import com.extjs.gxt.ui.client.GXT;
 import com.extjs.gxt.ui.client.Style.SelectionMode;
 import com.extjs.gxt.ui.client.core.XTemplate;
 import com.extjs.gxt.ui.client.data.BaseListLoader;
-import com.extjs.gxt.ui.client.data.ListLoader;
 import com.extjs.gxt.ui.client.data.ModelData;
 import com.extjs.gxt.ui.client.dnd.DND.Feedback;
 import com.extjs.gxt.ui.client.dnd.GridDragSource;
@@ -79,14 +77,37 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	protected String headerStyle = "x-grid3-hd-row";
 	protected List<gkMap> models = new gkList();
 	protected CoreIC core;
-	protected int limitRecords = 0; // 前端限定资料笔数
-	protected boolean autoNewRow = false; // 设定是否自动增列
+	protected int limitRecords = 0; // 前端限定資料筆數
+	protected boolean autoNewRow = false; // 設定是否自動增列
 	protected String invokeBean = "";
 	protected final static String INDEX = "idx"; // row Index
 	protected final static String GK_INDEX = "_gk_idx"; // row Index
 	protected String filterValue;
 	protected int updateBuffer = 500; // 設定filter store的延遲時間
-	// 定义Comparator，将TreeMap的key转为int再做比较，避免idx按照String型别排序产生错乱
+
+	// 是否只取得已勾選的資料
+	private boolean isGetSelectedItems = true;
+
+	public boolean isGetSelectedItems() {
+		return isGetSelectedItems;
+	}
+
+	public void setGetSelectedItems(boolean isGetSelectedItems) {
+		this.isGetSelectedItems = isGetSelectedItems;
+	}
+
+	// 初始是否新增一空白列
+	private boolean initBlankRow;
+
+	public void setInitBlankRow(boolean initBlankRow) {
+		this.initBlankRow = initBlankRow;
+	}
+
+	public boolean isInitBlankRow() {
+		return initBlankRow;
+	}
+
+	// 定義Comparator，將TreeMap的key轉為int再做比較，避免idx按照String型別排序產生錯亂
 	protected Comparator comparator = new Comparator() {
 		@Override
 		public int compare(Object o1, Object o2) {
@@ -110,6 +131,11 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 
 	@Override
 	public Object getInfo() {
+		if (grid.getSelectionModel() instanceof gkCheckBoxSelectionModel) {
+			// 取所有資料，需要將isGetSelectedItems設定為false
+			setGetSelectedItems(false);
+			return getListItem();
+		}
 		return getGrid().getStore().getModels();
 	}
 
@@ -118,78 +144,19 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 		// 為了相容先前沒習慣使用bindEvent方法註冊事件，所以override空實作
 	}
 
-	public static interface Event {
-		public final static String SET_LIST_ITEM = ".setListItem";
-		public final static String SET_ITEM = ".setItem";
-		public final static String GET_LIST_ITEM = ".getListItem";
-		public final static String SELECT_ROW = ".selectRow";
-		public final static String REFRESH = ".refresh";
-		public final static String TURN = ".turn";
-		public final static String SET_BEAN = ".setBean";
-		public final static String SET_INFO = ".setInfo";
-	}
-
-	public String evtSetListItem() {
-		return getId() + Event.SET_LIST_ITEM;
-	}
-
-	public String evtSetItem() {
-		return getId() + Event.SET_ITEM;
-	}
-
-	public String evtGetListItem() {
-		return getId() + Event.GET_LIST_ITEM;
-	}
-
-	public String evtSelectRow() {
-		return getId() + Event.SELECT_ROW;
-	}
-
-	public String evtRefresh() {
-		return getId() + Event.REFRESH;
-	}
-
-	public String evtTurn() {
-		return getId() + Event.TURN;
-	}
-
-	public String evtSetBean() {
-		return getId() + Event.SET_BEAN;
-	}
-
-	public String eventId_setInfo() {
-		return getId() + Event.SET_INFO;
-	}
-
-	public gkGridIC(String id) {
-		setId(id);
-		core = new CoreIC(this);
-		core.init();
-		setHeaderVisible(false);
-	}
-
 	public gkGridIC() {
 		core = new CoreIC(this);
 		core.init();
-		setHeaderVisible(false);
 	}
 
 	public Grid getGrid() {
 		return grid;
 	}
 
-	public void setHeaderStyle(String css) {
-		headerStyle = css;
-		// 如果已經render則不會觸發onRender，所以直接刷新header
-		if (grid.isRendered()) {
-			grid.getView().getHeader().refresh();
-		}
-	}
-
 	/**
 	 * <pre>
-	 * 如果是List,表示要置換整個清單的資料 
-	 * 如果是Map,表示要更新某筆資料
+	 * 如果是List，表示要置換整個清單的資料 
+	 * 如果是Map，表示要更新某筆資料
 	 * </pre>
 	 */
 	@Override
@@ -216,10 +183,18 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 			}
 			grid.getStore().getLoader().load();
 		}
+		// 當設定的資料為空且需要initRow或自動增列任一時，則增加一行空的列
+		if (grid.getSelectionModel() instanceof gkCheckBoxSelectionModel
+				&& (isInitBlankRow() || isAutoNewRow())
+				&& getGrid().getStore().getCount() == 0) {
+			addInitRow();
+		}
 	}
 
 	/**
 	 * 提供透過API直接設定資料
+	 * 
+	 * @param list
 	 */
 	public abstract void setListItem(List<gkMap> list);
 
@@ -229,14 +204,29 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	 * @return List
 	 */
 	public List getListItem() {
+		if (grid.getSelectionModel() instanceof gkCheckBoxSelectionModel) {
+			List storeList;
+			// 若為true，則只取得已勾選的資料，反之則取得所有資料
+			if (isGetSelectedItems) {
+				storeList = grid.getSelectionModel().getSelectedItems();
+			} else {
+				storeList = grid.getStore().getModels();
+			}
+			int idx = 0;
+			for (Iterator ite = storeList.iterator(); ite.hasNext();) {
+				ModelData md = (ModelData) ite.next();
+				md.set(INDEX, idx);
+				idx++;
+			}
+			return storeList;
+		}
 		return getGrid().getStore().getModels();
 	}
 
 	/**
-	 * <pre>
-	 * 取得所有勾选行资料
-	 * 资料格式TreeMap<rowIdx,dejgMap<key, value>>，dejgMap包含rowIdx
-	 * </pre>
+	 * 取得所有勾選row資料
+	 * 
+	 * @return Map
 	 */
 	public Map getSelectedRowItems() {
 		List storeList = getGrid().getStore().getModels();
@@ -257,10 +247,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * <pre>
-	 * 取得点选row资料
-	 * 资料格式dejgMap<key, value>，包含rowIdx（idx = int）
-	 * </pre>
+	 * 取得點選row資料
 	 * 
 	 * @return Map
 	 */
@@ -281,76 +268,12 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 		return grid.getView();
 	}
 
-	/**
-	 * 讀取資料，傳入EventObject
-	 * 
-	 * @param eo
-	 */
-	public void load(EventObject eo) {
-		core.getBus().publishRemote(eo, new EventProcess() {
-
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				models = eo.getInfoList();
-				// 增加限制资料笔数功能
-				setLimitRecords();
-				ListStore store_temp = grid.getStore();
-				ListLoader load_temp = store_temp.getLoader();
-				load_temp.load();
-			}
-		});
-	}
-
-	/**
-	 * 讀取資料，傳入Map
-	 * 
-	 * @param info
-	 */
-	public void load(Map info) {
-
-	}
-
-	public void load(String eventId) {
-		load(new EventObject(eventId));
-	}
-
-	public void load(String eventId, Map info) {
-		load(new EventObject(eventId, info));
-	}
-
-	/**
-	 * 接收其他component傳來的物件
-	 */
-	protected void createSubscribeEvent() {
-
-	}
-
-	/**
-	 * 調用遠端Bean取得清單資料 此方法將立即調用後端Bean
-	 * 
-	 * @param bean
-	 */
-	public void invokeBean(String bean) {
-		core.getBus().publishRemote(new EventObject(bean), new EventProcess() {
-
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				core.getBus().publish(
-						new EventObject(evtSetListItem(), eo.getInfoList()));
-			}
-		});
-	}
-
-	public void setInvokeBean(String bean) {
-		invokeBean = bean;
+	public void setInvokeBean(String invokeBean) {
+		this.invokeBean = invokeBean;
 	}
 
 	public String getInvokeBean() {
 		return invokeBean;
-	}
-
-	public void load() {
-		invokeBean(invokeBean);
 	}
 
 	public abstract ColumnModel createColumnModel();
@@ -368,7 +291,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 
 			@Override
 			public void onBrowserEvent(com.google.gwt.user.client.Event event) {
-				if (event.getKeyCode() == 37) {
+				if (event.getKeyCode() == KeyCodes.KEY_LEFT) {
 					event.stopPropagation();
 				} else {
 					super.onBrowserEvent(event);
@@ -396,7 +319,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	 * 增加滑鼠右鍵選單項目
 	 * 
 	 * @param txt
-	 * @param iconStyle
+	 * @param imgIcon
 	 * @param ep
 	 */
 	protected void addMenuItem(final String txt,
@@ -424,6 +347,36 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 		menu.add(item);
 	}
 
+	/**
+	 * 增加CheckBox
+	 * 
+	 * @param checkBox
+	 * @param autoSelect
+	 */
+	public void addCheckBox(boolean checkBox, boolean autoSelect) {
+		gkCheckBoxSelectionModel sm = new gkCheckBoxSelectionModel();
+		if (!autoSelect) {
+			sm.setAutoSelect(false);
+		}
+		List columns = grid.getColumnModel().getColumns();
+		columns.add(0, sm.getColumn());
+		grid.setSelectionModel(sm);
+		grid.addPlugin(sm);
+
+		// 將sm中的RowMouseDown事件的執行順序，優先於gkGridIC裡註冊的RowMouseDown事件
+		List eventList = new gkList(grid.getListeners(Events.RowMouseDown));
+		for (Iterator ite = eventList.iterator(); ite.hasNext();) {
+			grid.removeListener(Events.RowMouseDown, (Listener) ite.next());
+		}
+		for (int i = eventList.size() - 1; i >= 0; i--) {
+			grid.addListener(Events.RowMouseDown, (Listener) eventList.get(i));
+		}
+
+		if (!checkBox) {
+			grid.getColumnModel().getColumns().get(0).setHidden(true);
+		}
+	}
+
 	public void refreshFooterData() {
 		refreshFooterData(getView());
 	}
@@ -434,8 +387,8 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 
 	protected Grid createGrid(ListStore store, ColumnModel cm) {
 		Grid grid = new EditorGrid(store, cm);
-		// 复写selectionModel。在grid里当操作的cell为TextArea时，操作上下方向键不响应selectionModel的动作
-		// 因为selectionModel的动作会失去cell的焦点
+		// 複寫selectionModel。在grid裡當操作的cell為TextArea時，操作上下方向鍵不響應selectionModel的動作
+		// 因為selectionModel的動作會失去cell的焦點
 		grid.setSelectionModel(new GridSelectionModel<ModelData>() {
 			@Override
 			protected void onKeyDown(GridEvent<ModelData> e) {
@@ -457,42 +410,20 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 
 			@Override
 			protected void onKeyPress(GridEvent<ModelData> e) {
-				if (e.getKeyCode() == 32) { // 空白鍵
-					// do nothing
-				} else {
+				// 空白鍵do nothing
+				if (!(e.getKeyCode() == 32)) {
 					super.onKeyPress(e);
 				}
 			}
 		});
 
-		grid.getView().setRowSelectorDepth(30);// 设定寻找深度为30.默认为10
-		grid.getView().setCellSelectorDepth(18); // 設定尋找深度18.預設為6
+		grid.getView().setRowSelectorDepth(30);// 設定尋找深度30，預設為10
+		grid.getView().setCellSelectorDepth(18); // 設定尋找深度18，預設為6
 		return grid;
 	}
 
 	/**
-	 * 取得指定的值，第几栏
-	 * 
-	 * @param row
-	 * @param column
-	 * @return String
-	 */
-	public String getColumnValue(int row, int column) {
-		ColumnModel cm = grid.getColumnModel();
-		Object obj = null;
-		if (column < cm.getColumnCount()) {
-			ColumnConfig cf = cm.getColumn(column);
-			if (row < store.getCount()) {
-				ModelData m = store.getAt(row);
-				obj = m.get(cf.getId());
-			}
-		}
-		obj = obj == null ? "" : obj;
-		return obj.toString();
-	}
-
-	/**
-	 * 設定 SelectionMode.SIMPLE 多筆選項,SINGLE单笔
+	 * 設定 SelectionMode，SIMPLE=多筆選項，SINGLE=單筆
 	 * 
 	 * @param selectionMode
 	 */
@@ -501,26 +432,26 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 限定资料笔数
+	 * 限定資料筆數
 	 * 
 	 * @param limitRecords
 	 */
 	public void setLimit(int limitRecords) {
-		// 如果传入的数字为正整数才传递给this.limitRecords做限制资料笔数使用
+		// 如果傳入的數字為正整數才傳遞給this.limitRecords做限制資料筆數使用
 		if ((limitRecords + "").matches("^[1-9]\\d*$")) {
 			this.limitRecords = limitRecords;
 		}
 	}
 
 	/**
-	 * 取得限定资料笔数
+	 * 取得限定資料筆數
 	 */
 	public int getLimit() {
-		return this.limitRecords;
+		return limitRecords;
 	}
 
 	/**
-	 * 设定models为限定的资料笔数，如果总笔数小于所限定的资料笔数，models为资料总笔数
+	 * 設定models為限定的資料筆數，如果總筆數小於所限定的資料筆數，models為資料總筆數
 	 */
 	protected void setLimitRecords() {
 		if (limitRecords != 0) {
@@ -531,16 +462,16 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 取得是否自动增列
+	 * 是否自動增列
 	 * 
 	 * @return boolean
 	 */
-	public boolean getAutoNewRow() {
+	public boolean isAutoNewRow() {
 		return autoNewRow;
 	}
 
 	/**
-	 * 设定是否自动增列
+	 * 設定是否自動增列
 	 * 
 	 * @param autoNewRow
 	 */
@@ -566,7 +497,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 设定可以拖拉调整资料顺序，同時設定grid點選header不可以排序 因為排序后拖拉調整資料順序會不起作用
+	 * 設定可以拖拉調整資料順序，同時設定grid點選header不可以排序，因為排序後拖拉調整資料順序會不起作用
 	 * 
 	 * @param order
 	 * @param feedback
@@ -593,26 +524,16 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 新增一行逻辑 判别是否有限制比数，是否限制增行
+	 * 新增一行邏輯，判別是否有限制筆數，是否限制增行
 	 * 
 	 * @param row
 	 */
 	public void createNewRow(String row) {
-		boolean notLimit = true;
-		if (this instanceof gkPageGridIC) {
-			notLimit = getLimit() == 0 ? true : ((gkPageGridIC) this)
-					.getTotalSize() < getLimit() ? true : false;
-		} else {
-			notLimit = getLimit() == 0 ? true
-					: grid.getStore().getCount() < getLimit();
-		}
+		int count = grid.getStore().getCount();
+		boolean noLimit = getLimit() == 0 ? true : count < getLimit();
 		int rowIndex = Integer.parseInt(row);
-		if (grid.getStore().getCount() - 1 == rowIndex && notLimit) {
-			if (getLimit() != 0 && this instanceof gkPageGridIC) {
-				((gkPageGridIC) this).setTotalSize(((gkPageGridIC) this)
-						.getTotalSize() + 1);
-			}
-			if (getAutoNewRow()) {
+		if (count - 1 == rowIndex && noLimit) {
+			if (isAutoNewRow()) {
 				addRow();
 			}
 		}
@@ -703,7 +624,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 通用grid监听。在使用时自行加上
+	 * 通用grid監聽。在使用時自行加上
 	 */
 	public void addListener() {
 		grid.addListener(Events.RowMouseDown, new Listener<GridEvent>() {
@@ -718,9 +639,11 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 			@Override
 			public void handleEvent(GridEvent ge) {
 				int kc = ge.getKeyCode();
-				// 在已经点选行的情况下才起作用
+				// 在已經點選行的情況下才起作用
+				// 當keypress為左括號(時，keycode與KEY_DOWN相同，因此會判斷錯誤
 				if (grid.getSelectionModel() != null
-						&& (kc == KeyCodes.KEY_UP || kc == KeyCodes.KEY_DOWN)) {
+						&& (kc == KeyCodes.KEY_UP || kc == KeyCodes.KEY_DOWN)
+						&& !ge.getEvent().getShiftKey()) {
 					ge.setModel(grid.getSelectionModel().getSelectedItem());
 					int rowind = grid.getStore().indexOf(ge.getModel());
 					ge.setRowIndex(rowind);
@@ -732,15 +655,14 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 		grid.addListener(Events.BeforeEdit, new Listener<GridEvent>() {
 
 			@Override
-			public void handleEvent(final GridEvent ge) {
-				final int col = ge.getColIndex();
+			public void handleEvent(GridEvent ge) {
+				int col = ge.getColIndex();
 				final int row = ge.getRowIndex();
-				final ColumnModel cm = grid.getColumnModel();
+				ColumnModel cm = grid.getColumnModel();
 				final CellEditor ed = cm.getEditor(col);
 
 				// 在BeforeEdit更新rowIndex資料
-				GridView view = grid.getView();
-				view.setLastRowIndex(row);
+				grid.getView().setLastRowIndex(row);
 
 				ed.addListener(Events.BeforeComplete,
 						new Listener<EditorEvent>() {
@@ -749,20 +671,15 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 								ed.removeListener(Events.BeforeComplete, this);
 								Object postProcessValue = be.getValue();
 								Object startValue = be.getStartValue();
-								GridView view = grid.getView();
-								GridSelectionModel sm = grid
-										.getSelectionModel();
-
 								Object startValueTrans = ed
 										.postProcessValue(startValue);
 
 								if (!postProcessValue.equals(startValueTrans)) {
 									// 當值改變時，選取該row
-									sm.select(row, true);
-
+									grid.getSelectionModel().select(row, true);
 									if (GXT.isIE || GXT.isGecko) {
 										// IE在進行到這裡前，rowIndex又被更新，所以必須再設定一次
-										view.setLastRowIndex(row);
+										grid.getView().setLastRowIndex(row);
 										if (be.getEditor() != null) {
 											// 當為null時，表示是由cellColumnConfig
 											// 那裡發布的事件，而不需再發布change事件。
@@ -790,7 +707,6 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 				view.setLastRowIndex(lastRowIndex);
 			}
 		});
-
 	}
 
 	/**
@@ -814,18 +730,14 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 		if (lastColIndex < 0) {
 			return;
 		}
-		// 如果element是input或者是textarea时，在GridselectionMode模式下不能选中。改为选中此行
-		// 在gkMultiEditorGridIC模式下不需要运行此代码段
+		// 如果element是input或者是textarea時，在GridSelectionMode模式下不能選中。改為選中此行
+		// 在CheckBoxSelectionModel模式下不需要運行此代碼段
 		if (isInput(ge.getTarget())
-				&& !(getParent() instanceof gkMultiEditorGridIC)) {
+				&& !(grid.getSelectionModel() instanceof gkCheckBoxSelectionModel)) {
 			grid.getSelectionModel().select(ge.getRowIndex(), false);
 		}
-		Map info = new gkMap();
-		info.put("rowIndex", "" + lastColIndex);
-		info.put("colIndex", "" + lastRowIndex);
-		info.put("data", ge.getModel().getProperties());
-		EventBus.get().publish(new EventObject(evtSelectRow(), info));
-		// 自动增行判断/在点击每一行空白处时自动增行
+
+		// 自動增行判斷/在點擊每一行空白處時自動增行
 		if (autoNewRow) {
 			createNewRow(lastRowIndex + "");
 		}
@@ -846,7 +758,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 给选中的行设定值 model里不存在的值不设定
+	 * 給選中的行設定值，model裡不存在的值不設定
 	 * 
 	 * @param mapItem
 	 */
@@ -863,7 +775,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 判别Element是否是input或者是textarea
+	 * 判別Element是否是input或者是textarea
 	 * 
 	 * @param target
 	 * @return boolean
@@ -875,7 +787,7 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	}
 
 	/**
-	 * 设定扩展行。效果为每行前增加'+'图标，点击此图标会显示扩展行
+	 * 設定擴展行。效果為每行前增加'+'圖示，點擊此圖示會顯示擴展行
 	 * 
 	 * @param html
 	 */
@@ -894,10 +806,10 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 	/**
 	 * 依傳入值，過濾store的資料
 	 * 
-	 * @param value
+	 * @param filterValue
 	 */
-	public void filter(String value) {
-		this.filterValue = value;
+	public void filter(String filterValue) {
+		this.filterValue = filterValue;
 		deferredFilter.delay(updateBuffer);
 	};
 
@@ -923,11 +835,9 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 							break;
 						}
 					}
-
 					return result;
 				}
 			};
-
 			getGrid().getStore().addFilter(filter);
 			getGrid().getStore().applyFilters(filterValue);
 		}
@@ -935,7 +845,6 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 
 	/**
 	 * 清除store裡的所有filter
-	 * 
 	 */
 	public void clearFilters() {
 		List filters = getGrid().getStore().getFilters();
@@ -944,16 +853,5 @@ public abstract class gkGridIC extends ContentPanel implements IC {
 				getGrid().getStore().removeFilter((StoreFilter) filters.get(i));
 			}
 		}
-	}
-
-	// 初始是否新增一空白列
-	private boolean initBlankRow = false;
-
-	public void setInitBlankRow(boolean initBlankRow) {
-		this.initBlankRow = initBlankRow;
-	}
-
-	public boolean isInitBlankRow() {
-		return initBlankRow;
 	}
 }

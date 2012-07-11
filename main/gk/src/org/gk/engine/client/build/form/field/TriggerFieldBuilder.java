@@ -16,6 +16,9 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkFieldBinding;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
 import com.extjs.gxt.ui.client.event.Events;
@@ -32,6 +35,7 @@ public class TriggerFieldBuilder extends FormFieldBuilder {
 	@Override
 	public Component create() {
 		TriggerField field = new TriggerField() {
+
 			@Override
 			public void focus() {
 				if (rendered) {
@@ -47,6 +51,7 @@ public class TriggerFieldBuilder extends FormFieldBuilder {
 	@Override
 	public Component create(gkFormPanelIC form) {
 		TriggerField field = new TriggerField() {
+
 			@Override
 			public void focus() {
 				if (rendered) {
@@ -55,7 +60,10 @@ public class TriggerFieldBuilder extends FormFieldBuilder {
 				}
 			}
 		};
-		form.fieldBinding(field, getField().getName());
+
+		gkFieldBinding fb = new gkFieldBinding(field, getField().getName(),
+				(Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}

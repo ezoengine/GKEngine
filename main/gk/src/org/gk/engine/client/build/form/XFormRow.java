@@ -76,17 +76,11 @@ public class XFormRow extends XPanel {
 
 	@Override
 	public Component build() {
-		// 判斷若有form，則由form來建立dejgFormRow，若無則自行new
-		gkFormRow row;
-		if (form != null) {
-			row = form.createRow(align);
-		} else {
-			row = new gkFormRow(align);
-		}
+		gkFormRow row = new gkFormRow(align);
 		super.initComponent(row);
 
 		String[] rate = splitAllWidthRate(widthRate, widgets.size());
-		for (int i = 0; i < widgets.size(); i++) {
+		for (int i = 0, j = 0; i < widgets.size(); i++) {
 			UIGen ui = (UIGen) widgets.get(i);
 			if (ui instanceof XFieldSet) {
 				((XFieldSet) ui).setForm(form);
@@ -96,7 +90,8 @@ public class XFormRow extends XPanel {
 			Component com = ui.build();
 			if (!(com instanceof Window)) {
 				XComponent xc = (XComponent) ui;
-				row.add(com, rate[i], xc.getWidth(), xc.getHeight());
+				row.add(com, rate[j], xc.getWidth(), xc.getHeight());
+				j++;
 			}
 		}
 		return row;

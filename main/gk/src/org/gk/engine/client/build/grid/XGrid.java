@@ -20,20 +20,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import jfreecode.gwt.event.client.bus.EventObject;
-
 import org.gk.engine.client.build.panel.XContentPanel;
 import org.gk.engine.client.event.EventCenter;
 import org.gk.engine.client.event.EventListener;
 import org.gk.engine.client.event.IEventConstants;
 import org.gk.engine.client.gen.UIGen;
 import org.gk.engine.client.utils.IRegExpUtils;
-import org.gk.engine.client.utils.StringUtils;
 import org.gk.ui.client.com.form.gkList;
 import org.gk.ui.client.com.form.gkMap;
 import org.gk.ui.client.com.grid.gkGridIC;
 import org.gk.ui.client.com.grid.gkListGridIC;
-import org.gk.ui.client.com.grid.gkMultiEditorGridIC;
 import org.gk.ui.client.com.grid.gkPageGridIC;
 import org.gk.ui.client.com.grid.gkPageGridIC.BarPosition;
 
@@ -74,7 +70,7 @@ import com.google.gwt.xml.client.Node;
 public class XGrid extends XContentPanel {
 
 	private final static String MODE = "single|simple|multi";
-	// 正整数的正则表达式
+	// 正整數的正規表示式
 	private final static String POSITIVE_INTEGER = "^[1-9]\\d*$";
 
 	protected String adjustForHScroll, autoNewRow, columnHeaderVisible;
@@ -200,13 +196,6 @@ public class XGrid extends XContentPanel {
 	}
 
 	@Override
-	public void onInfo(String eventId, String content) {
-		EventObject eo = StringUtils.toEventObject(eventId, content);
-		bus.publish(new EventObject(id + gkGridIC.Event.SET_LIST_ITEM, eo
-				.getInfo()));
-	}
-
-	@Override
 	public Component build() {
 		List fields = new gkList();
 		// HeaderGroup
@@ -228,15 +217,12 @@ public class XGrid extends XContentPanel {
 			}
 		}
 		// 如果是編輯模式，id改為innerGrid_$id
-		gkGridIC grid = createGridIC(
-				type.equals("edit") || checkBox.equals("true") ? "innerGrid_"
-						+ id : id, fields, header);
+		gkGridIC grid = createGridIC(fields, header);
 		final gkGridIC g = grid;
 
 		// 設定是否要隱藏 ColumnHeader。
-		// 改用监听Grid的render事件，因建構階段還取不到ColumnHeader
+		// 改用監聽Grid的render事件，因建構階段還取不到ColumnHeader
 		grid.getGrid().addListener(Events.Render, new Listener<BaseEvent>() {
-
 			@Override
 			public void handleEvent(BaseEvent be) {
 				g.getView().getHeader()
@@ -244,35 +230,44 @@ public class XGrid extends XContentPanel {
 			}
 		});
 
+		// 第一次開啟分頁時Refresh Head，解決開啟關閉的摺頁後無法看到 Checkbox 問題
+		grid.addListener(Events.Expand, new Listener<BaseEvent>() {
+			@Override
+			public void handleEvent(BaseEvent be) {
+				g.getGrid().getView().getHeader().refresh();
+				// 還原狀態 (當沒有任何資料時，Checkbox 會被勾選)
+				g.getGrid().fireEvent(Events.ViewReady);
+				g.removeListener(Events.Expand, this);
+			}
+		});
+
 		// 是否新增Aggregation Row
 		if (!aggRow.isEmpty()) {
 			attachAggregationRow(aggRow, grid);
 		}
-		// 设定是否自动增行
+		// 設定是否自動增列
 		if (Boolean.parseBoolean(autoNewRow)) {
 			grid.setAutoNewRow(true);
 		}
-		// 设定限制资料笔数
+		// 設定限制資料筆數
 		if (limit.matches(POSITIVE_INTEGER)) {
 			grid.setLimit(Integer.parseInt(limit));
 		}
-		// 对pageGrid设定每页显示资料笔数pageSize
+		// 對pageGrid設定每頁顯示資料筆數pageSize
 		if (grid instanceof gkPageGridIC) {
 			if (pageSize.matches(IRegExpUtils.POSITIVE_INTEGER)) {
 				((gkPageGridIC) grid).setPageSize(Integer.parseInt(pageSize));
 			}
 		}
-		// 设定Expander Row，若设定如果在放在new gkMultiEditorGridIC之前，
-		// 则"+"符号在checkbox勾选框之后，反之其后
+		// 設定Expander Row，若設定如果在放在new gkMultiEditorGridIC之前，
+		// 則"+"符號在checkbox勾選框之後，反之其後
 		if (!xTemplate.equals("")) {
 			grid.setRowExpander(xTemplate);
 		}
 
-		// 設定init時是否需要新增一空白行 "沿用舊的用法 type='edit'時預設要有initrow，但又可能會設定不要initRow"
+		// 設定init時是否需要新增一空白行，"沿用舊的用法 type='edit'時預設要有initrow，但又可能會設定不要initRow"
 		if (type.equals("edit")) {
 			grid.setInitBlankRow(true);
-		} else {
-			grid.setInitBlankRow(false);
 		}
 
 		if (!initRow.equals("")) {
@@ -280,25 +275,22 @@ public class XGrid extends XContentPanel {
 		}
 
 		if (type.equals("edit") || checkBox.equals("true")) {
-			gkMultiEditorGridIC mgrid = new gkMultiEditorGridIC(id, grid);
-			// 設定是否顯示checkBox
 			if (!checkBox.equals("")) {
-				mgrid.setCheckBox(Boolean.parseBoolean(checkBox));
+				grid.addCheckBox(Boolean.parseBoolean(checkBox),
+						Boolean.parseBoolean(autoSelect));
+			} else {
+				grid.addCheckBox(true, Boolean.parseBoolean(autoSelect));
 			}
-			if (!autoSelect.equals("")) {
-				mgrid.setAutoSelect(Boolean.parseBoolean(autoSelect));
-			}
-			grid = mgrid;
 		}
 
 		// 是否新增流水號
 		if (seqPosition.matches("\\d+")) {
 			grid.setSequence(Integer.parseInt(seqPosition));
 		}
-		// 垂直scrollBar是否自动出现
+		// 垂直scrollBar是否自動出現
 		grid.getView().setAdjustForHScroll(
 				Boolean.parseBoolean(adjustForHScroll));
-		// 设定SelectionMode
+		// 設定SelectionMode
 		if (selMode.matches(MODE)) {
 			grid.setSelectionMode(SelectionMode.valueOf(selMode.toUpperCase()));
 		}
@@ -306,7 +298,7 @@ public class XGrid extends XContentPanel {
 		grid.getGrid().setStripeRows(Boolean.parseBoolean(stripe));
 		// 如果onRow有設定事件指令，當使用者點選清單中某筆資料時會觸發此事件
 		addEventListener(grid.getGrid(), Events.RowMouseDown, onRow);
-		// 按上下方向键触发onRow事件
+		// 按上下方向鍵觸發onRow事件
 		addKeyListener(grid);
 		grid.getView().setForceFit(true);
 		initComponent(grid);
@@ -318,7 +310,7 @@ public class XGrid extends XContentPanel {
 	protected void initComponent(Component com) {
 		super.initComponent(com);
 		gkGridIC gridIC = (gkGridIC) com;
-		// 判断设定grid是否为dragSource
+		// 判斷設定grid是否為dragSource
 		if (Boolean.parseBoolean(dragSource)) {
 			final EventListener evtListener = new EventListener(gridIC.getId(),
 					onDrag, XGrid.this);
@@ -332,15 +324,15 @@ public class XGrid extends XContentPanel {
 					String dropTrgComId = e.getDropTarget().getComponent()
 							.getId()
 							+ "";
-					// 判断如果dragSource和dropTarget是同一Component，则设定operation=move
-					// 否则依照gul语法中的参数来设定参数值
+					// 判斷如果dragSource和dropTarget是同一Component，則設定operation=move
+					// 否則依照gul語法中的參數來設定參數值
 					if (dragSrcComId.equals(dropTrgComId)) {
 						e.setOperation(Operation.MOVE);
 					} else {
 						e.setOperation(Operation.valueOf(XGrid.this.operation
 								.toUpperCase()));
 					}
-					// 这里做延时处理是因为onDrop定义的事件有可能阻断拖放的完成，如：show:grid
+					// 這裡做延時處理是因為onDrop定義的事件有可能阻斷拖放的完成，如：show:grid
 					// 拿掉延時測看看
 					final DNDEvent event = e;
 					if (!onDrop.equals("")) {
@@ -362,7 +354,7 @@ public class XGrid extends XContentPanel {
 				}
 			};
 		}
-		// 判断设定grid是否为dropTarget
+		// 判斷設定grid是否為dropTarget
 		if (Boolean.parseBoolean(dropTarget)) {
 			final EventListener evtListener = new EventListener(gridIC.getId(),
 					onDrop, XGrid.this);
@@ -373,7 +365,7 @@ public class XGrid extends XContentPanel {
 				@Override
 				protected void onDragDrop(DNDEvent e) {
 					Object obj = e.getData();
-					// 复制一份新的data，然后设定给DNDEvent，避免operation=copy时rowIndex计算错误
+					// 複製一份新的data，然後設定給DNDEvent，避免operation=copy時rowIndex計算錯誤
 					if (XGrid.this.operation.toUpperCase().equals("COPY")) {
 						if (obj instanceof List) {
 							List<ModelData> models = new gkList<ModelData>();
@@ -388,7 +380,7 @@ public class XGrid extends XContentPanel {
 						}
 					}
 					final DNDEvent event = e;
-					// 这里做延时处理是因为onDrop定义的事件有可能阻断拖放的完成，如：show:grid
+					// 這裡做延時處理是因為onDrop定義的事件有可能阻斷拖放的完成，如：show:grid
 					if (!onDrop.equals("")) {
 						Scheduler.get().scheduleDeferred(
 								new ScheduledCommand() {
@@ -405,8 +397,8 @@ public class XGrid extends XContentPanel {
 								new ScheduledCommand() {
 									@Override
 									public void execute() {
-										evtListener2.handleEvent(event);
 										callSuperOnDragDrop(event);
+										evtListener2.handleEvent(event);
 									}
 								});
 					}
@@ -426,19 +418,16 @@ public class XGrid extends XContentPanel {
 				&& gridIC.getGrid().getStore().getCount() == 0) {
 			gridIC.addInitRow();
 		}
-
 	}
 
 	/**
 	 * 根據page屬性決定建立的Grid是不是分頁Grid
 	 * 
-	 * @param id
 	 * @param fields
 	 * @param header
 	 * @return gkGridIC
 	 */
-	private gkGridIC createGridIC(String id, final List fields,
-			final List header) {
+	private gkGridIC createGridIC(final List fields, final List header) {
 		gkGridIC grid;
 		// 若page為true、top或bottom，則產生分頁Grid，若為false，則產生不分頁Grid
 		if (isPage()) {
@@ -480,7 +469,7 @@ public class XGrid extends XContentPanel {
 				}
 			};
 		} else {
-			grid = new gkListGridIC(id) {
+			grid = new gkListGridIC() {
 
 				@Override
 				public ColumnModel createColumnModel() {
@@ -521,7 +510,7 @@ public class XGrid extends XContentPanel {
 	}
 
 	/**
-	 * 按上下方向键触发onRow事件
+	 * 按上下方向鍵觸發onRow事件
 	 * 
 	 * @param grid
 	 */

@@ -16,10 +16,14 @@
  */
 package org.gk.engine.client.event;
 
+import java.util.List;
 import java.util.Map;
+
+import jfreecode.gwt.event.client.bus.JsonConvert;
 
 import org.gk.engine.client.event.attrib.AddAttribute;
 import org.gk.engine.client.event.attrib.CellAttribute;
+import org.gk.engine.client.event.attrib.CheckedAttribute;
 import org.gk.engine.client.event.attrib.ClearAttribute;
 import org.gk.engine.client.event.attrib.CollapseAttribute;
 import org.gk.engine.client.event.attrib.DataAttribute;
@@ -55,6 +59,9 @@ import org.gk.engine.client.event.attrib.WidthAttribute;
 import org.gk.ui.client.com.form.gkMap;
 
 import com.extjs.gxt.ui.client.event.Events;
+import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.json.client.JSONArray;
+import com.google.gwt.json.client.JSONObject;
 
 /**
  * 事件工廠
@@ -63,6 +70,58 @@ import com.extjs.gxt.ui.client.event.Events;
  * @since 2010/9/30
  */
 public class EventFactory {
+
+	/**
+	 * 將輸入的jso轉換成事件清單
+	 * 
+	 * @param jso
+	 * @return EventList
+	 */
+	static EventList convertToEventList(JavaScriptObject jso) {
+		EventList el = new EventList();
+		JSONObject jsonObj = new JSONObject(jso);
+		el.setEvents(JsonConvert.jsonToList((JSONArray) jsonObj.get("events")));
+		List errors = JsonConvert.jsonToList((JSONArray) jsonObj.get("errors"));
+		if (!errors.isEmpty()) {
+			el.setError(true);
+			el.setErrorMessage((String) errors.get(0));
+		}
+		return el;
+	}
+
+	/**
+	 * 將輸入的obj轉換成事件資料
+	 * 
+	 * @param obj
+	 * @return EventData
+	 */
+	static EventData convertToEventData(Object obj) {
+		EventData ed = new EventData();
+		if (obj instanceof Map) {
+			Map<String, List> data = (Map) obj;
+			ed.setCmd(data.get("cmd") + "");
+			ed.setSources(data.get("node1"));
+			ed.setTargets(data.get("node2"));
+		}
+		return ed;
+	}
+
+	/**
+	 * 將輸入的obj轉換成事件值
+	 * 
+	 * @param obj
+	 * @return EventValue
+	 */
+	static EventValue convertToEventValue(Object obj) {
+		EventValue ev = new EventValue();
+		if (obj instanceof Map) {
+			Map<String, String> data = (Map) obj;
+			ev.setContent(data.get("content"));
+			ev.setValue(data.get("value"));
+			ev.setType(data.get("type"));
+		}
+		return ev;
+	}
 
 	/**
 	 * 建立處理器群組
@@ -91,6 +150,7 @@ public class EventFactory {
 		Map attribGroup = new gkMap();
 		attribGroup.put(IEventConstants.ATTRIB_ADD, new AddAttribute());
 		attribGroup.put(IEventConstants.ATTRIB_CELL, new CellAttribute());
+		attribGroup.put(IEventConstants.ATTRIB_CHECKED, new CheckedAttribute());
 		attribGroup.put(IEventConstants.ATTRIB_CLEAR, new ClearAttribute());
 		attribGroup.put(IEventConstants.ATTRIB_COLLAPSE,
 				new CollapseAttribute());

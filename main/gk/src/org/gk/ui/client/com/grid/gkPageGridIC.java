@@ -30,7 +30,6 @@ import com.extjs.gxt.ui.client.data.BasePagingLoadResult;
 import com.extjs.gxt.ui.client.data.BasePagingLoader;
 import com.extjs.gxt.ui.client.data.RpcProxy;
 import com.extjs.gxt.ui.client.store.ListStore;
-import com.extjs.gxt.ui.client.widget.grid.ColumnModel;
 import com.extjs.gxt.ui.client.widget.layout.FitLayout;
 import com.extjs.gxt.ui.client.widget.toolbar.PagingToolBar;
 import com.google.gwt.user.client.rpc.AsyncCallback;
@@ -71,8 +70,7 @@ public abstract class gkPageGridIC extends gkGridIC {
 
 		pageLoader = createDataLoader();
 		store = new ListStore(pageLoader);
-		ColumnModel cm = createColumnModel();
-		grid = createGrid(store, cm);
+		grid = createGrid(store, createColumnModel());
 
 		toolbar = new PagingToolBar(PAGESIZE);
 		toolbar.addPlugin(new gkPageSizePlugin());
@@ -94,12 +92,27 @@ public abstract class gkPageGridIC extends gkGridIC {
 	}
 
 	@Override
+	public void createNewRow(String row) {
+		boolean noLimit = getLimit() == 0 ? true : getTotalSize() < getLimit();
+		int rowIndex = Integer.parseInt(row);
+		if (grid.getStore().getCount() - 1 == rowIndex && noLimit) {
+			if (getLimit() != 0) {
+				setTotalSize(getTotalSize() + 1);
+			}
+			if (isAutoNewRow()) {
+				addRow();
+			}
+		}
+	}
+
+	@Override
 	protected void onResize(int width, int height) {
-		if (!isVisible()) {
-			// 元件不可見的狀況下會影響尺寸的設定，因此先暫時設定可見，重設尺寸後再設定不可見
-			removeStyleName(getHideMode().value());
+		String hideMode = getHideMode().value();
+		// 元件不可見且有設定hideMode的狀況下，會影響尺寸的設定，因此先暫時移除hideMode，重設尺寸後再加回
+		if (!isVisible() && getStyleName().indexOf(hideMode) != -1) {
+			removeStyleName(hideMode);
 			super.onResize(width, height);
-			addStyleName(getHideMode().value());
+			addStyleName(hideMode);
 		} else {
 			super.onResize(width, height);
 		}

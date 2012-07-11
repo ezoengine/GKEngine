@@ -1,19 +1,19 @@
 /*
-* Copyright (C) 2000-2012  InfoChamp System Corporation
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-* 
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-* 
-* You should have received a copy of the GNU General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2000-2012  InfoChamp System Corporation
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.gk.client;
 
 import jfreecode.gwt.event.client.bus.EventBus;
@@ -25,18 +25,22 @@ import com.extjs.gxt.ui.client.GXT;
 import com.extjs.gxt.ui.client.util.Theme;
 import com.extjs.gxt.ui.client.util.ThemeManager;
 import com.extjs.gxt.ui.client.widget.LayoutContainer;
+import com.extjs.gxt.ui.client.widget.layout.FitLayout;
+import com.google.gwt.user.client.DOM;
+import com.google.gwt.user.client.Element;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.ui.RootPanel;
 
 public class GKEngine extends gkComponent {
-
 	private Engine gk;
 
 	@Override
 	public void start() {
-		gk = determineEngineType() ? Engine.getJSEngine() : Engine.get();
+		if (hasRenderPageFunction()) {
+			RootPanel.get().add(viewport);
+		}
+		gk = Engine.get();
 		Timer timer = new Timer() {
-
 			@Override
 			public void run() {
 				if (gk.isReady()) {
@@ -50,13 +54,13 @@ public class GKEngine extends gkComponent {
 
 	/**
 	 * <pre>
-	 * 根據javascript有沒有renderPage方法決定使用哪種引擎，
-	 * JSEngine沒有codespilt，Engine則有gwt codespilt
+	 * 判斷網頁中有沒有renderPage方法,如果沒有renderPage方法
+	 * 就會找尋網頁中<gk>標籤
 	 * </pre>
 	 * 
 	 * @return boolean
 	 */
-	native boolean determineEngineType()/*-{
+	native boolean hasRenderPageFunction()/*-{
 		return $wnd.renderPage != undefined;
 	}-*/;
 
@@ -104,9 +108,15 @@ public class GKEngine extends gkComponent {
 		$wnd.gk.theme = function(theme, def) {
 			return @org.gk.client.GKEngine::switchTheme(Ljava/lang/String;Ljava/lang/String;)(theme,''+def);
 		}
-		if ($wnd.renderPage != undefined) {
-			$wnd.renderPage();
+		if ($wnd.renderPage == undefined) {
+			$wnd.renderPage = function() {
+				var gks = $wnd.document.getElementsByTagName('gk');
+				while (gks.length > 0) {
+					engineWrap.@org.gk.client.GKEngine::renderElement(Lcom/google/gwt/user/client/Element;)(gks[0]);
+				}
+			}
 		}
+		$wnd.renderPage();
 	}-*/;
 
 	private static String switchTheme(String themeId, String def) {
@@ -140,8 +150,22 @@ public class GKEngine extends gkComponent {
 			RootPanel.get(id).add(gulPanel);
 			gk.render(gulSyntax, gulPanel, false);
 		} else {
-			gk.render(gulSyntax, content, true);
+			gk.render(gulSyntax, viewport, true);
 		}
+	}
+
+	public void renderElement(Element ele) {
+		String gulSyntax = "<page>" + ele.getInnerHTML() + "</page>";
+		Element div = DOM.createDiv();
+		div.setId(ele.getId());
+		ele.getParentElement().replaceChild(div, ele);
+		if (div.getId().equals("")) {
+			div.setId(DOM.createUniqueId());
+		}
+		LayoutContainer lc = new LayoutContainer();
+		lc.setLayout(new FitLayout());
+		RootPanel.get(div.getId()).add(lc);
+		gk.render(gulSyntax, lc);
 	}
 
 	public String gul() {

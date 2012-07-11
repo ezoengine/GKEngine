@@ -166,4 +166,9 @@ public class XGridField extends XField implements gkColumnInfo {
 	public void addComponentToStore(String id, Object obj) {
 		EngineDataStore.addComponent(id, (Component) obj);
 	}
+
+	@Override
+	public boolean removeComponentFromStore(String id) {
+		return EngineDataStore.removeComponent(id);
+	}
 }

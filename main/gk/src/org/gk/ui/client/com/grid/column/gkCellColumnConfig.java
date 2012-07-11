@@ -143,8 +143,10 @@ public abstract class gkCellColumnConfig extends ColumnConfig {
 										fieldInfo.execEventCenter(id,
 												fieldInfo.getInit(),
 												fieldInfo.getFieldObject());
+										fieldInfo.removeComponentFromStore(id);
 									}
 								});
+						fieldInfo.addComponentToStore(id, obj);
 					}
 				}
 				return obj;

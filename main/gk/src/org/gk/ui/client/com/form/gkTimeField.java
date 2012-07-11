@@ -36,8 +36,7 @@ public class gkTimeField extends ComboBox {
 
 	public gkTimeField() {
 		setTriggerAction(ComboBox.TriggerAction.ALL);
-		setValueField("timeValue");
-		setDisplayField("timeDisplay");
+		setValueField("value");
 		store = genListStore(period);
 		doQuery("", false);
 		addListener(Events.Select, new Listener() {
@@ -47,6 +46,7 @@ public class gkTimeField extends ComboBox {
 				collapse();
 			}
 		});
+		setLazyRender(false);
 	}
 
 	public void set15MinPeriod() {
@@ -54,13 +54,17 @@ public class gkTimeField extends ComboBox {
 		setStore(genListStore(period));
 	}
 
-	// 取得時間的值(回傳四碼字串，像是 1530)
+	/**
+	 * 取得時間的值(回傳四碼字串，像是1530)
+	 * 
+	 * @return String
+	 */
 	public String getTimeValue() {
 		String timeValue = "";
 		if (!"".equals(getRawValue())) {
 			timeValue = getRawValue().replaceAll(":", "");
 		} else {
-			timeValue = getValue() == null ? "" : getValue().get("timeValue")
+			timeValue = getValue() == null ? "" : getValue().get("value")
 					.toString();
 		}
 		return timeValue;
@@ -69,14 +73,19 @@ public class gkTimeField extends ComboBox {
 	public void setTimeValue(String timeValue) {
 		if (!timeValue.equals("")) {
 			ModelData m = new BaseModelData();
-			m.set("timeDisplay",
+			m.set("text",
 					timeValue.substring(0, 2) + ":" + timeValue.substring(2));
-			m.set("timeValue", timeValue);
+			m.set("value", timeValue);
 			setValue(m);
 		}
 	}
 
-	// 組時間資料
+	/**
+	 * 組時間資料
+	 * 
+	 * @param period
+	 * @return ListStore
+	 */
 	private ListStore genListStore(int period) {
 		ModelData m = new BaseModelData();
 		ListStore timeDatas = new ListStore<ModelData>();
@@ -86,8 +95,8 @@ public class gkTimeField extends ComboBox {
 			for (int j = 0; j < 59; j += period) {
 				timeFormat = format(i) + ":" + format(j);
 				timeValue = format(i) + format(j);
-				m.set("timeDisplay", timeFormat);
-				m.set("timeValue", timeValue);
+				m.set("text", timeFormat);
+				m.set("value", timeValue);
 				timeDatas.add(m);
 				m = new BaseModelData();
 			}
@@ -138,40 +147,20 @@ public class gkTimeField extends ComboBox {
 		}
 	}
 
-	// 驗證輸入的時間是否符合規定
 	@Override
 	protected boolean validateValue(String inputDate) {
-		// format HH:MM
 		boolean validate = false;
-		String errorMsg = Msg.get.formatError();
-		if (inputDate.length() == 5) {
-			try {
-				int int_hr = Integer.parseInt(inputDate.substring(0, 2));
-				int int_min = Integer.parseInt(inputDate.substring(3, 5));
-				if ((int_hr < 0) || (int_hr > 24)) {
-					validate = false;
-					markInvalid(errorMsg);
-				} else if (!":".equals(inputDate.substring(2, 3))) {
-					markInvalid(errorMsg);
-					validate = false;
-				} else if ((int_min < 0) || (int_min > 59)) {
-					markInvalid(errorMsg);
-					validate = false;
-				} else
-					validate = true;
-			} catch (NumberFormatException e) {
-				markInvalid(errorMsg);
-				validate = false;
-			}
-		} else if ("".equals(inputDate)) {
-			if (!getAllowBlank()) {
-				markInvalid(getMessages().getBlankText());
-				return false;
-			}
+		// 驗證輸入的時間是否符合規定，如00:00 ~ 24:59
+		if (inputDate.matches("([01][0-9]|2[0-4]):[0-5][0-9]")) {
 			validate = true;
+		} else if ("".equals(inputDate)) {
+			if (getAllowBlank()) {
+				validate = true;
+			} else {
+				markInvalid(getMessages().getBlankText());
+			}
 		} else {
-			markInvalid(errorMsg);
-			validate = false;
+			markInvalid(Msg.get.formatError());
 		}
 		return validate;
 	}

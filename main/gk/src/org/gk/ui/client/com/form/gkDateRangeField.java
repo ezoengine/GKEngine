@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.gk.ui.client.com.i18n.Msg;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.data.ModelData;
 import com.extjs.gxt.ui.client.event.BaseEvent;
@@ -68,8 +69,10 @@ public class gkDateRangeField extends AdapterField {
 		super(null);
 		LayoutContainer lc = new LayoutContainer();
 		setFieldLabel(fieldLabel);
-		dateFrom = new gkDateField(dateFormat);
-		dateTo = new gkDateField(dateFormat);
+		dateFrom = new gkDateField();
+		dateFrom.setFormat(dateFormat);
+		dateTo = new gkDateField();
+		dateTo.setFormat(dateFormat);
 		dateFrom.setId(beginDateKey);
 		dateTo.setId(endDateKey);
 		TableLayout tl;
@@ -105,8 +108,10 @@ public class gkDateRangeField extends AdapterField {
 		super(null);
 		LayoutContainer lc = new LayoutContainer();
 		setFieldLabel(fieldLabel);
-		dateFrom = new gkDateField(dateFormat);
-		dateTo = new gkDateField(dateFormat);
+		dateFrom = new gkDateField();
+		dateFrom.setFormat(dateFormat);
+		dateTo = new gkDateField();
+		dateTo.setFormat(dateFormat);
 		timeFrom = new gkTimeField();
 		timeTo = new gkTimeField();
 		dateFrom.setId(beginDateKey);
@@ -145,7 +150,8 @@ public class gkDateRangeField extends AdapterField {
 		super(null);
 		LayoutContainer lc = new LayoutContainer();
 		setFieldLabel(fieldLabel);
-		dateFrom = new gkDateField(dateFormat);
+		dateFrom = new gkDateField();
+		dateFrom.setFormat(dateFormat);
 		timeFrom = new gkTimeField();
 		timeTo = new gkTimeField();
 		dateFrom.setId(beginDateKey);
@@ -173,12 +179,14 @@ public class gkDateRangeField extends AdapterField {
 		if ((!"".equals(dateFrom.getRawValue()))
 				&& (!"".equals(dateTo.getRawValue()))) {
 			// 日期的時候就錯了
-			if (dateFrom.getUseDate().compareTo(dateTo.getUseDate()) > 0) {
+			String value1 = DateTimeUtils.getValue(dateFrom);
+			String value2 = DateTimeUtils.getValue(dateTo);
+			if (value1.compareTo(value2) > 0) {
 				dateTo.markInvalid(Msg.get.dateError());
 				rtn = false;
 			}
 			// 這邊表示是同一天，那就要檢查時間有沒有錯
-			else if (dateFrom.getUseDate().compareTo(dateTo.getUseDate()) == 0) {
+			else if (value1.compareTo(value2) == 0) {
 				if ((!"".equals(timeFrom.getRawValue()))
 						&& (!"".equals(timeTo.getRawValue()))) {
 					if (timeFrom.getTimeValue()
@@ -249,11 +257,13 @@ public class gkDateRangeField extends AdapterField {
 		}
 		if (chkNull && chkBlank) {
 			// 日期的時候就錯了
-			if (dateFrom.getUseDate().compareTo(dateTo.getUseDate()) > 0) {
+			String value1 = DateTimeUtils.getValue(dateFrom);
+			String value2 = DateTimeUtils.getValue(dateTo);
+			if (value1.compareTo(value2) > 0) {
 				dateTo.markInvalid(Msg.get.dateError());
 			}
 			// 這邊表示是同一天，那就要檢查時間有沒有錯
-			else if (dateFrom.getUseDate().compareTo(dateTo.getUseDate()) == 0) {
+			else if (value1.compareTo(value2) == 0) {
 				checkTime();
 			}
 		}
@@ -317,10 +327,10 @@ public class gkDateRangeField extends AdapterField {
 
 	public void setDefaultDateRange(String beginDate, String endDate) {
 		if (dateFrom != null) {
-			dateFrom.setUseDate(beginDate);
+			DateTimeUtils.setValue(dateFrom, beginDate);
 		}
 		if (dateTo != null) {
-			dateTo.setUseDate(endDate);
+			DateTimeUtils.setValue(dateTo, endDate);
 		}
 	}
 
@@ -328,28 +338,28 @@ public class gkDateRangeField extends AdapterField {
 	 * return 兩日期用","隔開
 	 */
 	public String getDefaultDateRange() {
-		return (dateFrom != null && dateTo != null) ? dateFrom.getUseDate()
-				+ "," + dateTo.getUseDate() : "";
+		return (dateFrom != null && dateTo != null) ? DateTimeUtils
+				.getValue(dateFrom) + "," + DateTimeUtils.getValue(dateTo) : "";
 	}
 
 	public void setDefaultBeginDate(String beginDate) {
 		if (dateFrom != null) {
-			dateFrom.setUseDate(beginDate);
+			DateTimeUtils.setValue(dateFrom, beginDate);
 		}
 	}
 
 	public String getDefaultBeginDate() {
-		return dateFrom != null ? dateFrom.getUseDate() : "";
+		return dateFrom != null ? DateTimeUtils.getValue(dateFrom) : "";
 	}
 
 	public void setDefaultEndDate(String endDate) {
 		if (dateTo != null) {
-			dateTo.setUseDate(endDate);
+			DateTimeUtils.setValue(dateTo, endDate);
 		}
 	}
 
 	public String getDefaultEndDate() {
-		return dateTo != null ? dateTo.getUseDate() : "";
+		return dateTo != null ? DateTimeUtils.getValue(dateTo) : "";
 	}
 
 	public void setDefaultTimeRange(String beginTime, String endTime) {

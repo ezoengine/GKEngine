@@ -16,18 +16,16 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkFieldBinding;
+import org.gk.ui.client.binding.gkRadioBinding;
+import org.gk.ui.client.com.form.gkRadio;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
-import com.extjs.gxt.ui.client.core.DomQuery;
 import com.extjs.gxt.ui.client.event.ComponentEvent;
-import com.extjs.gxt.ui.client.event.Events;
-import com.extjs.gxt.ui.client.event.FieldEvent;
 import com.extjs.gxt.ui.client.widget.Component;
-import com.extjs.gxt.ui.client.widget.ComponentManager;
-import com.extjs.gxt.ui.client.widget.form.Field;
 import com.extjs.gxt.ui.client.widget.form.Radio;
-import com.google.gwt.dom.client.NodeList;
-import com.google.gwt.user.client.Element;
 
 public class RadioBuilder extends FormFieldBuilder {
 
@@ -37,62 +35,32 @@ public class RadioBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create() {
-		Radio field = new Radio() {
-
-			@Override
-			public void focus() {
-				if (rendered) {
-					getFocusEl().focus();
-					onFocus(new FieldEvent(this));
-				}
-			}
-
-			@Override
-			public void setValue(Boolean value) {
-				if (rendered && value != null && value && group == null) {
-					String select = "input[type='radio'][name='" + name + "']";
-					NodeList list = DomQuery.select(select);
-					for (int i = 0; i < list.getLength(); i++) {
-						Element ele = (Element) ((Element) list.getItem(i))
-								.getParentElement();
-						if (ele.getId().equals(getId())) {
-							continue;
-						}
-						Component com = ComponentManager.get().get(ele.getId());
-						if (com instanceof Field) {
-							Field fd = (Field) com;
-							fd.setValue(false);
-						}
-					}
-				}
-				super.setValue(value);
-			}
-
-			@Override
-			protected void onClick(ComponentEvent be) {
-				// if we click the boxLabel, the browser fires an own click
-				// event
-				// automatically, so we ignore one of it
-				if (boxLabelEl != null
-						&& boxLabelEl.dom.isOrHasChild(be.getTarget())) {
-					return;
-				}
-				if (readOnly) {
-					be.stopEvent();
-					return;
-				}
-				setValue(true);
-				fireEvent(Events.Select, be);
-			}
-		};
+		Radio field = new gkRadio();
 		initField(field);
 		return field;
 	}
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		Radio field = form.createRadio(getField().getName(), getField()
-				.getValue());
+		final Map info = (Map) form.getInfo();
+		final String infoKey = getField().getName();
+		final String infoValue = getField().getValue();
+
+		Radio field = new gkRadio() {
+
+			@Override
+			protected void onFocus(ComponentEvent ce) {
+				if (!hasFocus) {
+					if (!readOnly) {
+						info.put(infoKey, infoValue);
+					}
+					super.onFocus(ce);
+				}
+			}
+		};
+		gkFieldBinding fb = new gkRadioBinding(field, getField().getName(),
+				info, getField().getValue());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}

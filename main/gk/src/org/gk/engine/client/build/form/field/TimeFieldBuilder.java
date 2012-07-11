@@ -16,6 +16,10 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkFieldBinding;
+import org.gk.ui.client.binding.gkTimeFieldBinding;
 import org.gk.ui.client.com.form.gkTimeField;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
@@ -37,7 +41,10 @@ public class TimeFieldBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		gkTimeField field = form.createTimeField(getField().getName());
+		gkTimeField field = new gkTimeField();
+		gkFieldBinding fb = new gkTimeFieldBinding(field, getField().getName(),
+				(Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}

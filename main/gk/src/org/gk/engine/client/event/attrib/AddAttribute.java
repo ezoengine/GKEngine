@@ -22,7 +22,6 @@ import java.util.Map;
 import org.gk.engine.client.Engine;
 import org.gk.ui.client.com.form.gkMap;
 import org.gk.ui.client.com.grid.gkGridIC;
-import org.gk.ui.client.com.grid.gkMultiEditorGridIC;
 import org.gk.ui.client.com.tree.dir.gkTreeDirPanelIC;
 import org.gk.ui.client.com.tree.xml.gkXMLTreePanelIC;
 
@@ -62,21 +61,15 @@ public class AddAttribute implements IAttribute {
 			}
 			combo.getPropertyEditor().setList(combo.getStore().getModels());
 		} else if (com instanceof gkGridIC) {
-			// 如果為dejgGridIC，則調用addNewRow方法新增一行
-			gkGridIC gridIC = com instanceof gkMultiEditorGridIC ? ((gkMultiEditorGridIC) com)
-					.getOrigenalGridIC() : (gkGridIC) com;
-
-			if (value != null && value instanceof gkMap) {
+			// 如果為gkGridIC，則調用addNewRow方法新增一行
+			gkGridIC gridIC = (gkGridIC) com;
+			if (value instanceof gkMap) {
 				gridIC.addRow((gkMap) value);
-			} else if (value instanceof String) {
-				if (((String) value).toLowerCase().equals("true"))
-					gridIC.addRow();
 			} else {
 				gridIC.addRow();
 			}
 		} else if (com instanceof gkXMLTreePanelIC) {
 			addTreeNode((gkXMLTreePanelIC) com, (Map) value);
-
 		} else if (com instanceof TabPanel) {
 			TabPanel tabPanel = (TabPanel) com;
 			if (value instanceof String) {

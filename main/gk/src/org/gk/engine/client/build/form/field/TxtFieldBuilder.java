@@ -16,6 +16,9 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkFieldBinding;
 import org.gk.ui.client.com.form.gkTextField;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
@@ -38,7 +41,9 @@ public class TxtFieldBuilder extends FormFieldBuilder {
 	@Override
 	public Component create(gkFormPanelIC form) {
 		gkTextField field = new gkTextField();
-		form.fieldBinding(field, getField().getName());
+		gkFieldBinding fb = new gkFieldBinding(field, getField().getName(),
+				(Map) form.getInfo());
+		form.addFieldBinding(fb);
 		initField(field);
 		return field;
 	}

@@ -19,6 +19,7 @@ package org.gk.engine.client.build.grid.field;
 import org.gk.engine.client.build.grid.XGridField;
 import org.gk.ui.client.com.form.gkDateField;
 import org.gk.ui.client.com.grid.column.gkDateColumnConfig;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.widget.form.Field;
 import com.extjs.gxt.ui.client.widget.grid.ColumnConfig;
@@ -40,13 +41,12 @@ public class GDateFiledBuilder extends GridFieldBuilder {
 				String format = x.getFormat();
 				String value = x.getValue();
 				gkDateField df = (gkDateField) field;
-				// 已經render的dateField必須使用setuseDate來設定欄位的值
-				if (!value.equals("")) {
-					df.setUseDate(value);
-				}
-				// 设定日期显示格式
+				// 設定日期顯示格式
 				if (!format.equals("")) {
 					df.setFormat(format);
+				}
+				if (!value.equals("")) {
+					DateTimeUtils.setValue(df, value);
 				}
 			}
 		};

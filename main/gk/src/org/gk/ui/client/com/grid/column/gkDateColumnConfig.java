@@ -19,6 +19,7 @@ package org.gk.ui.client.com.grid.column;
 import java.util.Date;
 
 import org.gk.ui.client.com.form.gkDateField;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.data.ModelData;
 import com.extjs.gxt.ui.client.event.Events;
@@ -28,7 +29,6 @@ import com.extjs.gxt.ui.client.store.ListStore;
 import com.extjs.gxt.ui.client.widget.form.Field;
 import com.extjs.gxt.ui.client.widget.grid.CellEditor;
 import com.extjs.gxt.ui.client.widget.grid.Grid;
-import com.google.gwt.i18n.client.DateTimeFormat;
 
 public abstract class gkDateColumnConfig extends gkCellColumnConfig {
 
@@ -38,7 +38,7 @@ public abstract class gkDateColumnConfig extends gkCellColumnConfig {
 
 	@Override
 	protected Field createField() {
-		Field field = new gkDateField() {
+		return new gkDateField() {
 			@Override
 			public void focus() {
 				if (rendered) {
@@ -67,25 +67,23 @@ public abstract class gkDateColumnConfig extends gkCellColumnConfig {
 				}
 			}
 		};
-		return field;
 	}
 
 	@Override
 	protected CellEditor createCellEditor() {
-		final gkDateField dateField = (gkDateField) createField();
-		addListener(dateField);
-		onField(dateField);
-		return new CellEditor(dateField) {
+		final gkDateField df = (gkDateField) createField();
+		addListener(df);
+		onField(df);
+		return new CellEditor(df) {
 
 			@Override
 			public String getDisplayValue(Object value) {
 				if (value != null && !value.toString().equals("")) {
 					// 考慮到當使用api set data到store時，未將資料設到欄位時的情形，
 					// 所以先set data給欄位後，再取showDate
-					dateField.setUseDate(value.toString());
-					return dateField.getShowDate(dateField.getInputDate());
+					DateTimeUtils.setValue(df, value.toString());
+					return df.getPropertyEditor().getStringValue(df.getValue());
 				}
-
 				return super.getDisplayValue(value);
 			}
 
@@ -98,25 +96,24 @@ public abstract class gkDateColumnConfig extends gkCellColumnConfig {
 			 */
 			@Override
 			protected void onBlur(FieldEvent fe) {
-				if (dateField.getDatePicker().isAttached()) {
+				if (df.getDatePicker().isAttached()) {
 					return;
 				} else {
 					super.onBlur(fe);
 				}
 			}
 
-			@Override
 			/**
-			 * click cellEditor後觸發，不拿顯示的值，直接從gkDateField欄位拿取
-			 * 省得還要將"2011/09/12" 字串轉成 Date物件 
-			 * fix: 拿不到DateField參考(所有物件同一參考),還是得轉Date物件 
+			 * click cellEditor後觸發，不拿顯示的值，直接從gkDateField欄位拿取 省得還要將"2011/09/12"
+			 * 字串轉成 Date物件 fix: 拿不到DateField參考(所有物件同一參考),還是得轉Date物件
 			 */
+			@Override
 			public Object preProcessValue(Object value) {
 				if (value == null || value.toString().equals("")) {
 					return null;
 				}
-				dateField.setUseDate("" + value);
-				return dateField.getInputDate();
+				DateTimeUtils.setValue(df, value + "");
+				return df.getValue();
 			}
 
 			/**
@@ -127,37 +124,32 @@ public abstract class gkDateColumnConfig extends gkCellColumnConfig {
 				if (value == null) {
 					return "";
 				}
-
-				// // 日期如何轉字串
-				// return dateField.getShowDate((Date) value);
-				return DateTimeFormat.getFormat("yyyyMMdd")
-						.format((Date) value);
+				return DateTimeUtils.formatDate((Date) value);
 			}
 		};
 	}
 
 	@Override
 	protected Field createColumnCell(final ModelData model,
-			final String property, ListStore<ModelData> store,
-			final int rowIndex, final int colIndex, final Grid<ModelData> grid) {
-
+			final String property, ListStore<ModelData> store, int rowIndex,
+			int colIndex, Grid<ModelData> grid) {
 		final gkDateField df = (gkDateField) createField();
 		onField(df);
-		// change事件，?入值后?行
+		// change事件，輸入值後執行
 		df.addListener(Events.Change, new Listener<FieldEvent>() {
 
 			@Override
 			public void handleEvent(FieldEvent be) {
-				model.set(property, df.getUseDate());
+				model.set(property, DateTimeUtils.getValue(df));
 			}
 		});
 
-		// ?刷新?位??行。?store里取得值。如果?有?段刷新出的?位??有值
-		if (model.get(property) != null
-				&& model.get(property).toString().length() != 0) {
-			df.setUseDate(model.get(property).toString());
+		// 當刷新欄位時運行。從store裡取得值。如果没有這段刷新出欄位將沒有值
+		Object value = model.get(property);
+		if (value != null && value.toString().length() != 0) {
+			DateTimeUtils.setValue(df, value.toString());
 		} else {
-			model.set(property, df.getUseDate());
+			model.set(property, DateTimeUtils.getValue(df));
 		}
 		addListener(df, grid, rowIndex, colIndex, store);
 		return df;

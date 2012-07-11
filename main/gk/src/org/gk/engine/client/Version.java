@@ -17,5 +17,5 @@
 package org.gk.engine.client;
 
 public interface Version {
-	String BUILD = "GPL-0402.1";
+	String BUILD = "v1.3-mmdd.x";
 }

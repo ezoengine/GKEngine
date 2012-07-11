@@ -16,6 +16,11 @@
  */
 package org.gk.engine.client.build.form.field;
 
+import java.util.List;
+import java.util.Map;
+
+import org.gk.ui.client.binding.gkCheckBoxBinding;
+import org.gk.ui.client.binding.gkFieldBinding;
 import org.gk.ui.client.com.panel.gkFormPanelIC;
 
 import com.extjs.gxt.ui.client.event.ComponentEvent;
@@ -50,10 +55,53 @@ public class CheckBoxBuilder extends FormFieldBuilder {
 
 	@Override
 	public Component create(gkFormPanelIC form) {
-		CheckBox cb = form.createCheckBox(getField().getName(), getField()
-				.getValue());
-		initField(cb);
-		return cb;
+		final Map info = (Map) form.getInfo();
+		final String infoKey = getField().getName();
+		final String infoValue = getField().getValue();
+
+		CheckBox field = new CheckBox() {
+
+			@Override
+			protected void onClick(ComponentEvent ce) {
+				super.onClick(ce);
+
+				if ((boxLabelEl != null && boxLabelEl.dom.isOrHasChild(ce
+						.getTarget())) || readOnly) {
+					return;
+				}
+				fireEvent(Events.Select, ce);
+			}
+
+			@Override
+			public void setValue(Boolean b) {
+				super.setValue(b);
+				Object value = info.get(infoKey);
+				if (value instanceof List) {
+					List cbList = (List) value;
+					if (b != null && b) {
+						// 如果是true而且不在cbList裡面，表示狀態更新了
+						if (!cbList.contains(infoValue)) {
+							cbList.add(infoValue);
+							// 透過put發布InfoChange事件
+							info.put(infoKey, cbList);
+						}
+					} else {
+						// 如果在cbList裡面，表示狀態更新了
+						if (cbList.contains(infoValue)) {
+							cbList.remove(infoValue);
+							// 透過put發布InfoChange事件
+							info.put(infoKey, cbList);
+						}
+					}
+				}
+			}
+		};
+
+		gkFieldBinding fb = new gkCheckBoxBinding(field, infoKey, info,
+				infoValue);
+		form.addFieldBinding(fb);
+		initField(field);
+		return field;
 	}
 
 	private void initField(CheckBox cb) {

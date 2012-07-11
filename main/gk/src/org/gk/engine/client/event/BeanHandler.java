@@ -17,6 +17,7 @@
 package org.gk.engine.client.event;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -26,13 +27,12 @@ import jfreecode.gwt.event.client.bus.obj.InfoList;
 import jfreecode.gwt.event.client.bus.obj.InfoMap;
 import jfreecode.gwt.event.client.bus.obj.InfoString;
 
+import org.gk.engine.client.Engine;
 import org.gk.engine.client.build.XComponent;
-import org.gk.ui.client.com.form.gkMap;
 
 import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.extjs.gxt.ui.client.widget.form.Field;
 import com.google.gwt.core.client.JavaScriptObject;
-import com.google.gwt.core.client.JsArrayString;
 
 /**
  * Bean事件處理器
@@ -43,12 +43,10 @@ import com.google.gwt.core.client.JsArrayString;
 public class BeanHandler extends EventHandler {
 
 	@Override
-	public void process(String xComId, String content, XComponent xCom,
-			BaseEvent be) {
-		Map info = new gkMap();
-		JavaScriptObject jso = null;
-
+	public void process(String xComId, List sources, List targets,
+			XComponent xCom, BaseEvent be) {
 		// 除了init外，其他事件觸發時，皆會帶be，若是Field，則從be取得ComponentId
+		JavaScriptObject jso = null;
 		if (be != null) {
 			Object obj = be.getSource();
 			if (obj instanceof Field) {
@@ -57,26 +55,14 @@ public class BeanHandler extends EventHandler {
 				jso = (JavaScriptObject) obj;
 			}
 		}
-		// src記錄此遠端事件是由哪個ComponentId發起的
-		info.put("src", xComId);
-		info.put("url", getURL());
-		JsArrayString split = splitContent(content);
-		if (split.length() == 2) {
-			Object value = getValue(split.get(1));
-			if (value != null) {
-				info.put(xComId, value);
-			} else {
-				info.putAll(getInfo(split.get(1)));
-			}
-		}
-		publishRemote(split.get(0), info, jso);
+		publishRemote(prepareEventId(sources), prepareInfo(xComId, targets),
+				jso);
 	}
 
 	protected void publishRemote(String eventId, Map info,
 			final JavaScriptObject jso) {
-
 		EventObject eo = new EventObject(eventId, info);
-		bus.publishRemote(eo, new EventProcess() {
+		EventProcess ep = new EventProcess() {
 
 			@Override
 			public void execute(String eventId, EventObject eo) {
@@ -100,17 +86,15 @@ public class BeanHandler extends EventHandler {
 					}
 				}
 			}
-		});
-	}
-
-	protected native JsArrayString splitContent(String content)/*-{
-		content = content.replace(':{', '&{');
-		if (content.indexOf('&') == -1) {
-			content = content.replace(':[', '&[');
-			if (content.indexOf('&') == -1) {
-				content = content.replace(':', '&');
-			}
+		};
+		String gkPath = Engine.getGKPath();
+		if (gkPath != null && gkPath.startsWith("http://")
+				&& !eventId.startsWith("http://")) {
+			String remoteUrl = gkPath + "/event/put/mobile/" + eventId;
+			info.put("url", remoteUrl);
+			bus.publishRemote(remoteUrl.substring(5), eo, ep);
+		} else {
+			bus.publishRemote(eo, ep);
 		}
-		return content.split("&");
-	}-*/;
+	}
 }

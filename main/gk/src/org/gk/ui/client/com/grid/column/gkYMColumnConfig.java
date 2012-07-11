@@ -19,6 +19,7 @@ package org.gk.ui.client.com.grid.column;
 import java.util.Date;
 
 import org.gk.ui.client.com.form.gkYMField;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 
 import com.extjs.gxt.ui.client.data.ModelData;
 import com.extjs.gxt.ui.client.event.Events;
@@ -28,7 +29,6 @@ import com.extjs.gxt.ui.client.store.ListStore;
 import com.extjs.gxt.ui.client.widget.form.Field;
 import com.extjs.gxt.ui.client.widget.grid.CellEditor;
 import com.extjs.gxt.ui.client.widget.grid.Grid;
-import com.google.gwt.i18n.client.DateTimeFormat;
 
 public abstract class gkYMColumnConfig extends gkCellColumnConfig {
 
@@ -71,20 +71,19 @@ public abstract class gkYMColumnConfig extends gkCellColumnConfig {
 
 	@Override
 	protected CellEditor createCellEditor() {
-		final gkYMField dateField = (gkYMField) createField();
-		addListener(dateField);
-		onField(dateField);
-		return new CellEditor(dateField) {
+		final gkYMField ym = (gkYMField) createField();
+		addListener(ym);
+		onField(ym);
+		return new CellEditor(ym) {
 
 			@Override
 			public String getDisplayValue(Object value) {
 				if (value != null && !value.toString().equals("")) {
 					// 考慮到當使用api set data到store時，未將資料設到欄位時的情形，
 					// 所以先set data給欄位後，再取showDate
-					dateField.setUseDate(value.toString());
-					return dateField.getShowDate(dateField.getInputDate());
+					DateTimeUtils.setValue(ym, value.toString());
+					return ym.getPropertyEditor().getStringValue(ym.getValue());
 				}
-
 				return super.getDisplayValue(value);
 			}
 
@@ -97,25 +96,24 @@ public abstract class gkYMColumnConfig extends gkCellColumnConfig {
 			 */
 			@Override
 			protected void onBlur(FieldEvent fe) {
-				if (dateField.getYMWindow().isAttached()) {
+				if (ym.getYMPicker().isAttached()) {
 					return;
 				} else {
 					super.onBlur(fe);
 				}
 			}
 
-			@Override
 			/**
-			 * click cellEditor後觸發，不拿顯示的值，直接從gkDateField欄位拿取
-			 * 省得還要將"2011/09/12" 字串轉成 Date物件
-			 * fix: 拿不到DateField參考(所有物件同一參考),還是得轉Date物件
+			 * click cellEditor後觸發，不拿顯示的值，直接從gkDateField欄位拿取 省得還要將"2011/09/12"
+			 * 字串轉成 Date物件 fix: 拿不到DateField參考(所有物件同一參考),還是得轉Date物件
 			 */
+			@Override
 			public Object preProcessValue(Object value) {
 				if (value == null || value.toString().equals("")) {
 					return null;
 				}
-				dateField.setUseDate("" + value);
-				return dateField.getInputDate();
+				DateTimeUtils.setValue(ym, value + "");
+				return ym.getValue();
 			}
 
 			/**
@@ -124,39 +122,41 @@ public abstract class gkYMColumnConfig extends gkCellColumnConfig {
 			 */
 			@Override
 			public Object postProcessValue(Object value) {
-				if (value == null) {
-					return "";
+				Object result = "";
+				if (value != null) {
+					if (ym.getYMPicker().isYearPicker()) {
+						result = DateTimeUtils.formatYear((Date) value);
+					} else {
+						result = DateTimeUtils.formatYM((Date) value);
+					}
 				}
-
-				return DateTimeFormat.getFormat("yyyyMM").format((Date) value);
+				return result;
 			}
 		};
 	}
 
 	@Override
 	protected Field createColumnCell(final ModelData model,
-			final String property, ListStore<ModelData> store,
-			final int rowIndex, final int colIndex, final Grid<ModelData> grid) {
+			final String property, ListStore<ModelData> store, int rowIndex,
+			int colIndex, Grid<ModelData> grid) {
 		final gkYMField ym = (gkYMField) createField();
 		onField(ym);
-		// 当刷新栏位时运行。从store里取得值。如果没有这段刷新出的栏位将没有值
-		if (model.get(property) != null
-				&& model.get(property).toString().length() != 0) {
-			ym.setUseDate(model.get(property).toString());
-		} else {
-			if (!"error".equals(ym.getUseDate())) {
-				model.set(property, ym.getUseDate());
-			}
-		}
 		// change事件，输入值后运行
 		ym.addListener(Events.Change, new Listener<FieldEvent>() {
 
 			@Override
 			public void handleEvent(FieldEvent be) {
-				model.set(property, ym.getUseDate());
+				model.set(property, DateTimeUtils.getValue(ym));
 			}
 		});
 
+		// 當刷新欄位時運行。從store裡取得值。如果没有這段刷新出欄位將沒有值
+		Object value = model.get(property);
+		if (value != null && value.toString().length() != 0) {
+			DateTimeUtils.setValue(ym, value.toString());
+		} else {
+			model.set(property, DateTimeUtils.getValue(ym));
+		}
 		addListener(ym, grid, rowIndex, colIndex, store);
 		return ym;
 	}

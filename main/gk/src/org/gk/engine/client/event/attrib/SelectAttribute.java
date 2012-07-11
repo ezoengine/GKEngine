@@ -17,14 +17,12 @@
 package org.gk.engine.client.event.attrib;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.gk.ui.client.com.form.gkListFieldIC;
 import org.gk.ui.client.com.form.gkMap;
+import org.gk.ui.client.com.grid.gkCheckBoxSelectionModel;
 import org.gk.ui.client.com.grid.gkGridIC;
-import org.gk.ui.client.com.grid.gkMultiEditorGridIC;
 import org.gk.ui.client.com.tree.dir.gkTreeDirPanelIC;
 import org.gk.ui.client.com.tree.xml.gkXMLTreePanelIC;
 
@@ -47,14 +45,11 @@ public class SelectAttribute implements IAttribute {
 		Object value = null;
 		if (com instanceof gkGridIC) {
 			gkGridIC grid = (gkGridIC) com;
-			// 取得所有勾选行资料，并重组成map<idx, dejgMap<包含idx键值对>>
+			// 取得所有勾選列資料，並重組成map
 			value = grid.getSelectedRowItems();
 		} else if (com instanceof ComboBox) {
 			ComboBox combo = (ComboBox) com;
 			value = combo.getValue();
-		} else if (com instanceof gkListFieldIC) {
-			gkListFieldIC lf = (gkListFieldIC) com;
-			value = lf.getSelectedItem();
 		} else if (com instanceof TabPanel) {
 			TabPanel tp = (TabPanel) com;
 			value = tp.getSelectedItem().getId();
@@ -71,20 +66,20 @@ public class SelectAttribute implements IAttribute {
 	@Override
 	public void setAttributeValue(Component com, Object value) {
 		if (com instanceof gkGridIC) {
+			gkGridIC grid = (gkGridIC) com;
 			// 如果傳Collection表示要選擇指定的row (可以是數字或字串)
 			if (value instanceof Collection) {
-				((gkGridIC) com).setSelectRowItem((Collection) value);
-			} else if (value instanceof TreeMap
-					&& ((TreeMap) value).size() == 1) {
-				// grid点选到grid的时候(目前只有单选)
-				value = ((TreeMap) value).get(((TreeMap) value).firstKey());
-				((gkGridIC) com).setSelectRowItem((Map) value);
+				grid.setSelectRowItem((Collection) value);
+			} else if (value instanceof TreeMap) {
+				TreeMap tm = (TreeMap) value;
+				if (tm.size() == 1) {
+					grid.setSelectRowItem((Map) tm.get(tm.firstKey()));
+				}
 			} else if (value instanceof String
-					&& com instanceof gkMultiEditorGridIC) {
+					&& grid.getGrid().getSelectionModel() instanceof gkCheckBoxSelectionModel) {
 				// for select all
-				if (((String) value).equalsIgnoreCase("all")) {
-					((gkMultiEditorGridIC) com).getGrid().getSelectionModel()
-							.selectAll();
+				if ("all".equalsIgnoreCase((String) value)) {
+					grid.getGrid().getSelectionModel().selectAll();
 				}
 			}
 		} else if (com instanceof ComboBox) {
@@ -96,28 +91,25 @@ public class SelectAttribute implements IAttribute {
 				combo.setValue((gkMap) value);
 			}
 			combo.fireEvent(Events.Change);
-		} else if (com instanceof gkListFieldIC) {
-			gkListFieldIC lf = (gkListFieldIC) com;
-			if (value instanceof List) {
-				lf.setSelectItem((List) value);
-			} else if (value instanceof String[]) {
-				lf.setSelectItem((String[]) value);
-			}
 		} else if (com instanceof TabPanel) {
 			TabPanel tp = (TabPanel) com;
 			tp.setSelection(tp.getItemByItemId(value + ""));
 		} else if (com instanceof gkXMLTreePanelIC) {
 			gkXMLTreePanelIC tree = (gkXMLTreePanelIC) com;
-			String nodeId = "";
+			String[] nodeIds;
 			if (value instanceof Map) {
-				nodeId = (String) ((Map) value).get(gkXMLTreePanelIC.ID);
+				nodeIds = ((String) ((Map) value).get(gkXMLTreePanelIC.ID))
+						.split(",");
 			} else {
-				nodeId = "" + value;
+				nodeIds = ((String) value).split(",");
 			}
+
 			tree.getTree().getSelectionModel().deselectAll();
-			ModelData md = tree.getTree().getStore().findModel(nodeId);
-			tree.getTree().getSelectionModel().select(true, md);
-			tree.getTree().scrollIntoView(md);
+			for (String nodeId : nodeIds) {
+				ModelData md = tree.getTree().getStore().findModel(nodeId);
+				tree.getTree().getSelectionModel().select(md, true);
+				tree.getTree().scrollIntoView(md);
+			}
 		}
 	}
 }

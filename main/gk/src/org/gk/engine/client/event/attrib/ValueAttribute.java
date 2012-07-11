@@ -22,13 +22,13 @@ import org.gk.engine.client.Engine;
 import org.gk.engine.client.utils.ComponentUtils;
 import org.gk.ui.client.com.IC;
 import org.gk.ui.client.com.form.gkComboBox;
-import org.gk.ui.client.com.form.gkDateField;
 import org.gk.ui.client.com.form.gkMap;
 import org.gk.ui.client.com.form.gkTimeField;
 import org.gk.ui.client.com.panel.gkHtmlContainer;
 import org.gk.ui.client.com.toolbar.gkButton;
 import org.gk.ui.client.com.tree.dir.gkTreeDirPanelIC;
 import org.gk.ui.client.com.tree.xml.gkXMLTreePanelIC;
+import org.gk.ui.client.com.utils.DateTimeUtils;
 import org.gk.ui.client.com.utils.TreeUtils;
 
 import com.extjs.gxt.ui.client.data.ModelData;
@@ -42,6 +42,7 @@ import com.extjs.gxt.ui.client.widget.ComponentManager;
 import com.extjs.gxt.ui.client.widget.LayoutContainer;
 import com.extjs.gxt.ui.client.widget.WidgetComponent;
 import com.extjs.gxt.ui.client.widget.form.ComboBox;
+import com.extjs.gxt.ui.client.widget.form.DateField;
 import com.extjs.gxt.ui.client.widget.form.Field;
 import com.extjs.gxt.ui.client.widget.grid.Grid;
 import com.extjs.gxt.ui.client.widget.treepanel.TreePanel;
@@ -66,8 +67,8 @@ public class ValueAttribute implements IAttribute {
 			value = hc.getHtml();
 		} else if (com instanceof Field) {
 			Field field = (Field) com;
-			if (field instanceof gkDateField) {
-				value = ((gkDateField) field).getUseDate();
+			if (field instanceof DateField) {
+				value = DateTimeUtils.getValue((DateField) field);
 			} else if (field instanceof gkTimeField) {
 				value = ((gkTimeField) field).getTimeValue();
 			} else {
@@ -170,8 +171,8 @@ public class ValueAttribute implements IAttribute {
 			Field field = (Field) com;
 			boolean orgFireChange = field.isFireChangeEventOnSetValue(); // 記錄原先設定
 			field.setFireChangeEventOnSetValue(true);
-			if (field instanceof gkDateField) {
-				((gkDateField) field).setUseDate(value + "");
+			if (field instanceof DateField) {
+				DateTimeUtils.setValue((DateField) field, value + "");
 			} else if (field instanceof gkTimeField) {
 				((gkTimeField) field).setTimeValue(value + "");
 			} else if (field instanceof gkComboBox && value instanceof Map

@@ -18,9 +18,11 @@ package org.gk.ui.client.com.tree.xml;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.gk.ui.client.com.form.gkMap;
 import org.gk.ui.client.com.tree.dir.gkTreeDirPanelIC;
@@ -36,6 +38,7 @@ import com.extjs.gxt.ui.client.dnd.TreePanelDragSource;
 import com.extjs.gxt.ui.client.dnd.TreePanelDropTarget;
 import com.extjs.gxt.ui.client.event.DNDEvent;
 import com.extjs.gxt.ui.client.store.TreeStoreModel;
+import com.extjs.gxt.ui.client.util.Format;
 import com.extjs.gxt.ui.client.widget.treepanel.TreePanel;
 import com.extjs.gxt.ui.client.widget.treepanel.TreePanel.TreeNode;
 import com.google.gwt.user.client.Element;
@@ -133,6 +136,51 @@ public abstract class gkTreeHandler {
 				}
 			}
 
+			@Override
+			protected void onDragEnter(DNDEvent event) {
+				removeDuplicateNode(event);
+
+				super.onDragEnter(event);
+				super.clearStyles(event);// 處理 IE 拖拉後選取項目樣式未被清除問題
+			}
+
+			private void removeDuplicateNode(DNDEvent event) {
+				List<TreeStoreModel> modelList = (List<TreeStoreModel>) event
+						.getData();
+
+				// 1.收集 Parent Node
+				Set<String> parentNodeSet = new HashSet<String>();
+				for (TreeStoreModel model : modelList) {
+					Node node = model.getModel().get("node");
+					if (!model.isLeaf()) {
+						parentNodeSet.add(node.toString());
+					}
+				}
+
+				// 2.移除重複出現的 Leaf Node (Leaf's Parent in parentNodeSet)
+				Iterator<TreeStoreModel> modelIt = modelList.iterator();
+				while (modelIt.hasNext()) {
+					TreeStoreModel model = modelIt.next();
+
+					Node node = model.getModel().get("node");
+					if (model.isLeaf()) {
+						if (node.getParentNode() != null
+								&& parentNodeSet.contains(node.getParentNode()
+										.toString())) {
+							modelIt.remove();
+						}
+					} else {
+						parentNodeSet.add(node.toString());
+					}
+				}
+
+				// 3.更新拖拉時顯示被選項目個數
+				event.getStatus().update(
+						Format.substitute(
+								event.getDragSource().getStatusText(),
+								modelList.size()));
+			}
+
 			/**
 			 * 此方法在拖拉的節點放到指定節點上，放開滑鼠左鍵時觸發
 			 */
@@ -144,35 +192,33 @@ public abstract class gkTreeHandler {
 					super.onDragDrop(e);
 					return;
 				}
-				List models = (List) e.getData();
-				// 預設只處理一個節點,基於假定拖拉同時選取一個TreeNode
-				ModelData dragModel = ((TreeStoreModel) models.get(0))
-						.getModel();
-				// 拖拉的xml Node物件
-				Node dragNode = dragModel.get("node");
+				List treeStoreModelList = (List) e.getData();
 
-				// 要放置的節點
-				ModelData dropModel = activeItem.getModel();
-				// 要放置的xml Node物件
-				Node dropNode = dropModel.get("node");
+				// 要放置的XML Node物件
+				Node dropNode = activeItem.getModel().get("node");
 				Node dropParentNode = dropNode.getParentNode();
+
 				// state=1,activeItem是目前要插入節點的上面那個Node
 				// state=0,則是下面那個TreeNode
 				// 因?xml doc的根??只能有一?.所以如果拖到根??以外就默??根???
-				if (dropParentNode.toString().equals(dropNode.toString())) {
+				if (dropParentNode != null
+						&& dropParentNode.toString()
+								.equals(dropNode.toString())) {
 					status = -1;
 				}
 
-				// copy模式下
-				// 1. 相同來源節點可拖二次以上到同一個目標節點
-				// 2. 修正下面使用appendChild後，導致來源樹節點資料被更新的問題
-				if (e.getOperation() == Operation.COPY) {
-					List data = new ArrayList();
-					data = processData(srcTree, models);
-					e.setData(data);
-					dragNode = ((TreeStoreModel) data.get(0)).getModel().get(
-							"node");
+				// Copy Mode
+				// 1.相同來源節點可拖二次以上到同一個目標節點
+				// 2.修正下面使用appendChild後，導致來源樹節點資料被更新的問題
+				// 3.修正拖拉後子項目資料未被更新問題
+				if (Operation.COPY == e.getOperation()) {
+					List newModels = genNewTreeStoreModelList(srcTree,
+							treeStoreModelList);
+					e.setData(newModels);
+					treeStoreModelList = newModels;
 				}
+
+				List<Node> dragNodeList = getNodeList(treeStoreModelList);
 
 				String tarNodeId = "";
 				// 2011/06/28 要解決無法拿到拖拉後放置的路徑，第幾個位置的問題
@@ -180,32 +226,42 @@ public abstract class gkTreeHandler {
 						.getDragEvent().getStartElement());
 				switch (status) {
 				case -1: // 節點裡面
-					dropNode.appendChild(dragNode);
+					for (Node node : dragNodeList) {
+						dropNode.appendChild(node);
+					}
+
 					tarNodeId = TreeUtils.getNodeId(activeItem, srcTreeNode,
 							status);
 					break;
 				case 1: // 節點下面
 					Node siblingNode = dropNode.getNextSibling();
-					dropParentNode.insertBefore(dragNode, siblingNode);
+					for (Node node : dragNodeList) {
+						dropParentNode.insertBefore(node, siblingNode);
+					}
 					// 下一個位置
 					tarNodeId = TreeUtils.getNodeId(activeItem, srcTreeNode, 1);
 					break;
 				case 0: // 節點上面
-					dropParentNode.insertBefore(dragNode, dropNode);
+					for (Node node : dragNodeList) {
+						dropParentNode.insertBefore(node, dropNode);
+					}
 					// 上一個位置
 					tarNodeId = TreeUtils.getNodeId(activeItem, srcTreeNode, 0);
 					break;
 				}
+
+				// Move Mode
 				// 如果是搬移的話，就將來源tree拖拉資料移除掉
-				if (e.getOperation() == Operation.MOVE) {
+				if (Operation.MOVE == e.getOperation()) {
 					List<TreeModel> sel = e.getData();
 					for (TreeModel tm : sel) {
-						ModelData m = (ModelData) tm.get("model");
-						srcTree.getStore().remove(m);
+						srcTree.getStore().remove((ModelData) tm.get("model"));
 					}
 				}
+
+				// 發佈事件通知更新
 				update(compositeInfo(srcTree, tree,
-						TreeUtils.getNodeId(srcTreeNode), tarNodeId)); // 發佈事件通知更新啦
+						TreeUtils.getNodeId(srcTreeNode), tarNodeId));
 				super.onDragDrop(e);
 			}
 		};
@@ -424,40 +480,66 @@ public abstract class gkTreeHandler {
 		return info;
 	}
 
-	private List processData(TreePanel tree, List<TreeStoreModel> models) {
-		List modelsNew = new ArrayList();
-		for (int i = 0; i < models.size(); i++) {
-			TreeStoreModel tsm = models.get(i);
-			modelsNew.add(processData(tree, tsm));
+	private List genNewTreeStoreModelList(TreePanel tree,
+			List<TreeStoreModel> models) {
+		List list = new ArrayList();
+
+		for (TreeStoreModel model : models) {
+			list.add(genNewTreeStoreModel(tree, model));
 		}
-		return modelsNew;
+		return list;
 	}
 
-	private TreeStoreModel processData(TreePanel tree, TreeStoreModel tsm) {
-		ModelData temp = tsm.getModel();
-		Node node = temp.get("node");
-		node = node.cloneNode(true);
-		ModelData copy = (ModelData) gkMap.clone((gkMap) temp);
-		copy.set("node", node);
-		tsm = tree.getStore().getModelState(copy);
+	private TreeStoreModel genNewTreeStoreModel(TreePanel tree,
+			TreeStoreModel model) {
+		// 1.Clone Node
+		Node cloneNode = ((Node) model.getModel().get("node")).cloneNode(true);
 
-		String id = copy.get("id");
+		// 2.Clone ModelData
+		ModelData cloneModelData = (ModelData) gkMap.clone((gkMap) model
+				.getModel());
+
+		cloneModelData.set("node", cloneNode);
+
+		// 3.Setting New ID
+		setNewNodeId(cloneNode, cloneModelData);
+
+		// 4.Update Child
+		genNewChildren(tree, model);
+
+		// 5.Rebuild parent-child relationships
+		TreeStoreModel newModel = tree.getStore().getModelState(cloneModelData);
+		newModel.setChildren((List) ((ArrayList<ModelData>) model.getChildren())
+				.clone());
+
+		return newModel;
+	}
+
+	private void genNewChildren(TreePanel tree, TreeStoreModel model) {
+		List<ModelData> childModelList = new ArrayList<ModelData>();
+
+		for (ModelData modelData : model.getChildren()) {
+			TreeStoreModel newModel = genNewTreeStoreModel(tree,
+					(TreeStoreModel) modelData);
+			childModelList.add(newModel);
+		}
+
+		model.setChildren(childModelList);
+	}
+
+	private void setNewNodeId(Node node, ModelData modelData) {
+		String id = modelData.get("id");
 		if (id == null) {
 			id = XDOM.getUniqueId();
 		} else {
 			id = id + "_" + XDOM.getUniqueId();
 		}
-		copy.set("id", id);
+		modelData.set("id", id);
+
 		Node nodeId = node.getAttributes().getNamedItem("id");
 		if (nodeId != null) {
 			nodeId.setNodeValue(id);
 		}
-
-		int count = tsm.getChildCount();
-		for (int i = 0; i < count; i++) {
-			processData(tree, (TreeStoreModel) tsm.getChild(i));
-		}
-		return tsm;
 	}
 
 	/**
@@ -471,4 +553,21 @@ public abstract class gkTreeHandler {
 	 */
 	public abstract void update(Map info);
 
+	/**
+	 * @Description: 取得被拖拉的 Node 節點清單 (TreeStoreModel --> Node)
+	 * @param models
+	 * @return list List<Node>
+	 * @author Jewway (I25974)
+	 * @date 2012/6/6
+	 */
+	private List<Node> getNodeList(List<TreeStoreModel> models) {
+		List<Node> list = new ArrayList<Node>();
+		for (Object model : models) {
+			// XML Node 物件
+			Node dragNode = ((TreeStoreModel) model).getModel().get("node");
+			list.add(dragNode);
+		}
+
+		return list;
+	}
 }

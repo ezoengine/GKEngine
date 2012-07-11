@@ -26,6 +26,7 @@ import com.extjs.gxt.ui.client.event.BaseEvent;
 import com.extjs.gxt.ui.client.event.ComponentEvent;
 import com.extjs.gxt.ui.client.event.Events;
 import com.extjs.gxt.ui.client.event.Listener;
+import com.extjs.gxt.ui.client.messages.XConstants;
 import com.extjs.gxt.ui.client.util.DateWrapper;
 import com.extjs.gxt.ui.client.util.Util;
 import com.extjs.gxt.ui.client.widget.ContentPanel;
@@ -35,125 +36,98 @@ import com.google.gwt.user.client.Element;
 import com.google.gwt.user.client.Event;
 
 /**
- * 中冠公用元件，提供AP設定畫面挑選元件要為西元年或是民國年格式
+ * 年月挑選元件，提供設定畫面挑選元件要為西元年或是民國年格式
  * 
- * @author I23979-林明儀, I24589-張明龍
+ * @author I23979,I24589,I23250
  * @since 2009/11/13
  */
 public class gkYMPicker extends LayoutContainer {
 
-	private String[] showYears = new String[10];
 	private ContentPanel cp = new ContentPanel();
 	private gkYMField field;
+
 	private El calendarEl;
 	private CompositeElement mpMonths, mpYears;
 	private Html picker = new Html();
-	private String focusYear; // 準備show在畫面上的預設年
-	private String focusMonth; // 準備show在畫面上的預設月
+
+	private String[] showYears = new String[10];
+	// 準備顯示在畫面上的預設年
+	private String focusYear;
+	// 準備顯示在畫面上的預設月
+	private String focusMonth;
 
 	// 年曆或是月曆
-	public static int CALENDAR_Y = 1;
-	public static int CALENDAR_YM = 2;
-	public static final String CANCEL = "CANCEL";
-
-	// 年曆或日曆型態
-	private int calendarType = 2;
-
+	private boolean yearPicker;
 	// 民國或西元格式
-	public static int CHINESE_YEAR = 1911;
-	public static int YEAR = 0;
+	private boolean chineseYear;
 
-	private int dateType = 0;
-
-	public int getDateType() {
-		return dateType;
+	/**
+	 * 是否為年曆，預設為否
+	 * 
+	 * @return boolean
+	 */
+	public boolean isYearPicker() {
+		return yearPicker;
 	}
 
-	public void setDateType(int dateType) {
-		this.dateType = dateType;
+	public void setYearPicker(boolean yearPicker) {
+		this.yearPicker = yearPicker;
 	}
 
-	public String getFocusYear() {
-		return focusYear;
+	/**
+	 * 是否為民國年，預設為否
+	 * 
+	 * @return boolean
+	 */
+	public boolean isChineseYear() {
+		return chineseYear;
 	}
 
-	public String getFocusMonth() {
-		return focusMonth;
-	}
-
-	public void setFocusYear(String focusYear) {
-		if (focusYear != null && !focusYear.equals("")
-				&& !focusYear.equals("error")) {
-			this.focusYear = focusYear;
-		}
-	}
-
-	public void setFocusMonth(String focusMonth) {
-		if (focusMonth != null && !focusMonth.equals("")
-				&& !focusMonth.equals("error")) {
-			this.focusMonth = focusMonth;
-		}
-	}
-
-	public gkYMPicker() {
-		java.sql.Date curDate = new java.sql.Date(System.currentTimeMillis());
-		focusYear = (curDate.getYear() + 1900) + "";
-		focusMonth = curDate.getMonth() + "";
-		cp.add(picker);
-		add(cp);
+	public void setChineseYear(boolean chineseYear) {
+		this.chineseYear = chineseYear;
 	}
 
 	public gkYMPicker(gkYMField field) {
-		this();
+		cp.add(picker);
+		add(cp);
 		this.field = field;
 	}
 
 	public void updateContent() {
-		showYears = getYears(this.focusYear); // 以focusYear為中心，產生年份清單
+		// 以focusYear為中心，產生年份清單
+		showYears = getYears(focusYear);
 
-		if (getDateType() == YEAR) {
-			cp.setHeading(Msg.get.yearTitle());
-		} else {
+		if (isChineseYear()) {
 			cp.setHeading(Msg.get.chineseYear());
 			changeYears();
 			// 改變成民國年，則focusYear也需要是民國年，所以取showYears的資料為值
-			setFocusYear(showYears[4]);
+			focusYear = showYears[4];
+		} else {
+			cp.setHeading(Msg.get.yearTitle());
 		}
 
 		createView();
 		cp.setAutoWidth(true);
 	}
 
-	public void setCalendarType(int type) {
-		calendarType = type;
+	public void setValue(Date date) {
+		DateWrapper dw = new DateWrapper(date);
+		focusYear = String.valueOf(dw.getFullYear());
+		focusMonth = String.valueOf(dw.getMonth());
 	}
 
-	public int getCalendarType() {
-		return calendarType;
-	}
-
-	/**
-	 * 
-	 * @return YYYY/MM
-	 */
-	public String getValue() {
-		String strVal = "";
-		int month = 1 + Integer.parseInt(focusMonth);
-		strVal = "" + month;
-		strVal = strVal.length() == 1 ? ("0" + strVal) : (strVal);
-
-		if (dateType == CHINESE_YEAR) {
-			int year = Integer.parseInt(focusYear);
-			strVal = (CHINESE_YEAR + year) + "/" + strVal;
-		} else {
-			strVal = focusYear + "/" + strVal;
+	public Date wrapperDate() {
+		int year = Integer.parseInt(focusYear);
+		int month = Integer.parseInt(focusMonth);
+		if (isChineseYear()) {
+			year = year + 1911;
 		}
-		return strVal;
+		return new DateWrapper(year, month, 1).asDate();
 	}
 
 	protected void createView() {
 		String html = "";
-		if (calendarType == CALENDAR_Y) {
+		if (isYearPicker()) {
 			html = getYHtml();
 		} else {
 			html = getYMHtml();
@@ -171,7 +145,7 @@ public class gkYMPicker extends LayoutContainer {
 			mpYears = new CompositeElement(Util.toElementArray(new El(picker
 					.getElement()).select("td.x-date-mp-year")));
 			updateMPYear();
-			if (calendarType == CALENDAR_Y) {
+			if (isYearPicker()) {
 				return;
 			}
 			mpMonths = new CompositeElement(Util.toElementArray(new El(picker
@@ -184,7 +158,7 @@ public class gkYMPicker extends LayoutContainer {
 					mpYears = new CompositeElement(Util.toElementArray(new El(
 							picker.getElement()).select("td.x-date-mp-year")));
 					updateMPYear();
-					if (calendarType == CALENDAR_Y) {
+					if (isYearPicker()) {
 						return;
 					}
 					mpMonths = new CompositeElement(Util.toElementArray(new El(
@@ -246,21 +220,12 @@ public class gkYMPicker extends LayoutContainer {
 			focusYear = pn.dom.getPropertyString("xyear");
 			pn.addStyleName("x-date-mp-sel");
 		} else if ((target.is("button.icsc-date-mp-YMOK"))) {
-			// .監聽點選今年 or 本月
-			Date curDate = new Date();
-			if (dateType == CHINESE_YEAR) {
-				int thisYear = curDate.getYear() + 1900;
-				focusYear = "" + (thisYear - CHINESE_YEAR);
-			} else {
-				focusYear = (curDate.getYear() + 1900) + "";
-			}
-			focusMonth = curDate.getMonth() + "";
-
-			field.select(getValue());
+			// 監聽點選今年 or 本月
+			field.select(new Date());
 		} else if ((target.is("button.x-date-mp-ok"))) {
-			field.select(getValue());
+			field.select(wrapperDate());
 		} else if ((target.is("button.x-date-mp-cancel"))) {
-			field.select(CANCEL);
+			field.select(null);
 		}
 	}
 
@@ -269,20 +234,21 @@ public class gkYMPicker extends LayoutContainer {
 		El target = be.getTargetEl();
 
 		if ((target.findParent("td.x-date-mp-month", 2)) != null) {
-			field.select(getValue());
+			field.select(wrapperDate());
 		} else if ((target.findParent("td.x-date-mp-year", 2)) != null) {
-			field.select(getValue());
+			field.select(wrapperDate());
 		}
 	}
 
 	/**
 	 * 取得年月曆
 	 * 
-	 * @return
+	 * @return String
 	 */
 	private String getYMHtml() {
 		StringBuffer buf = new StringBuffer();
 		buf.append("<table border=0 cellspacing=0 width='100%'>");
+		String[] monthNames = XConstants.constants.shortMonths();
 		for (int i = 0; i < 6; i++) {
 			if (i == 0) {
 				buf.append("<tr><td class=x-date-mp-ybtn align=center title='"
@@ -295,14 +261,14 @@ public class gkYMPicker extends LayoutContainer {
 				buf.append("<tr><td class='x-date-mp-year'><a href='#'></a></td>");
 				buf.append("<td class='x-date-mp-year x-date-mp-sep'><a href='#'></a></td>");
 			}
-			buf.append("<td class=x-date-mp-month><a href='#'>" + month[i]
+			buf.append("<td class=x-date-mp-month><a href='#'>" + monthNames[i]
 					+ "</a></td>");
-			buf.append("<td class=x-date-mp-month><a href='#'>" + month[i + 6]
-					+ "</a></td></tr>");
+			buf.append("<td class=x-date-mp-month><a href='#'>"
+					+ monthNames[i + 6] + "</a></td></tr>");
 		}
 
 		buf.append("<tr class=x-date-mp-btns><td colspan='4'>");
-		buf.append("<button type='button' class='x-date-mp-ok'>" + ok
+		buf.append("<button type='button' class='x-date-mp-ok'>" + Msg.get.ok()
 				+ "</button>");
 		buf.append("<button type='button' class='icsc-date-mp-YMOK'>"
 				+ Msg.get.thisMonth() + "</button>");
@@ -314,7 +280,7 @@ public class gkYMPicker extends LayoutContainer {
 	/**
 	 * 取得年曆
 	 * 
-	 * @return
+	 * @return String
 	 */
 	private String getYHtml() {
 		StringBuffer buf = new StringBuffer();
@@ -334,19 +300,21 @@ public class gkYMPicker extends LayoutContainer {
 		}
 
 		buf.append("<tr class=x-date-mp-btns><td colspan='2'>");
-		buf.append("<button type='button' class='x-date-mp-ok'>" + ok
+		buf.append("<button type='button' class='x-date-mp-ok'>" + Msg.get.ok()
 				+ "</button>");
 		buf.append("<button type='button' class='icsc-date-mp-YMOK'>"
-				+ Msg.get.thisMonth() + "</button>");
+				+ Msg.get.thisYear() + "</button>");
 		buf.append("</td></tr></table>");
 
 		return buf.toString();
 	}
 
-	// 設定前10年
+	/**
+	 * 設定前10年
+	 */
 	private void setPrevYear() {
 		for (int i = 0; i < showYears.length; i++) {
-			if (getDateType() == gkYMPicker.CHINESE_YEAR) {
+			if (isChineseYear()) {
 				int year = Integer.parseInt(showYears[i]) - 10;
 				if (year < 1 || year >= 100) {
 					showYears[i] = year + "";
@@ -361,10 +329,12 @@ public class gkYMPicker extends LayoutContainer {
 		}
 	}
 
-	// 設定後10年
+	/**
+	 * 設定後10年
+	 */
 	private void setNextYear() {
 		for (int i = 0; i < showYears.length; i++) {
-			if (getDateType() == gkYMPicker.CHINESE_YEAR) {
+			if (isChineseYear()) {
 				int year = Integer.parseInt(showYears[i]) + 10;
 				if (year < 1 || year >= 100) {
 					showYears[i] = year + "";
@@ -379,41 +349,21 @@ public class gkYMPicker extends LayoutContainer {
 		}
 	}
 
-	// 民國格式畫面顯示用字 - 月
-	private static String ok = Msg.get.ok();
-	private static final String[] month = { Msg.get.January(),// "1"+monthMsg,
-			Msg.get.February(),// "2"+monthMsg,
-			Msg.get.March(),// "3"+monthMsg,
-			Msg.get.April(),// "4"+monthMsg,
-			Msg.get.May(),// "5"+monthMsg,
-			Msg.get.June(),// "6"+monthMsg,
-			Msg.get.July(),// "7"+monthMsg,
-			Msg.get.August(),// "8"+monthMsg,
-			Msg.get.September(),// "9"+monthMsg,
-			Msg.get.October(),// "10"+monthMsg,
-			Msg.get.November(),// "11"+monthMsg,
-			Msg.get.December() // "12"+monthMsg
-	};
-
 	/**
 	 * 以傳入年份為中心，產生年份清單
 	 * 
 	 * @param nowYear
-	 * @return
+	 * @return String[]
 	 */
 	private String[] getYears(String nowYear) {
 		String[] years = new String[10];
 		int year = 0;
-
-		Date curDate = new Date();
-
 		// 取出來的年份需要加上1900才會是目前的西元年份
 		if (nowYear.equals("")) {
-			year = curDate.getYear() + 1900;
+			year = new DateWrapper().getFullYear();
 		} else {
 			year = Integer.parseInt(nowYear);
 		}
-
 		for (int i = 0; i < years.length; i++) {
 			if (i < 4) {
 				years[i] = year - (4 - i) + "";
@@ -423,11 +373,12 @@ public class gkYMPicker extends LayoutContainer {
 				years[i] = year + (i - 4) + "";
 			}
 		}
-
 		return years;
 	}
 
-	// 改變年份字串陣列內容為民國年選項
+	/**
+	 * 改變年份字串陣列內容為民國年選項
+	 */
 	private void changeYears() {
 		for (int i = 0; i < showYears.length; i++) {
 			// 點選圖示後即會更新內容，判斷如果已經計算過就不再計算民國年

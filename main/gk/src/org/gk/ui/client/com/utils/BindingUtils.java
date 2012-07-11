@@ -16,6 +16,7 @@
  */
 package org.gk.ui.client.com.utils;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -28,8 +29,7 @@ import org.gk.ui.client.com.form.gkComboBox;
 import org.gk.ui.client.com.form.gkDateField;
 import org.gk.ui.client.com.form.gkLabelField;
 import org.gk.ui.client.com.form.gkList;
-import org.gk.ui.client.com.form.gkListFieldIC;
-import org.gk.ui.client.com.form.gkMap;
+import org.gk.ui.client.com.form.gkRadio;
 import org.gk.ui.client.com.form.gkTimeField;
 import org.gk.ui.client.com.form.gkYMField;
 import org.gk.ui.client.com.panel.gkFieldAccessIfc;
@@ -66,7 +66,7 @@ import com.extjs.gxt.ui.client.widget.form.TextField;
  * </pre>
  * 
  * @author I21890
- * @date 2009/03
+ * @since 2009/10/28
  */
 public class BindingUtils {
 
@@ -104,79 +104,21 @@ public class BindingUtils {
 	 * @param core
 	 * @return Radio
 	 */
-	public static Radio createRadio(final String eventId, final Map info,
-			final String infoKey, final String infoValue, final CoreIC core) {
-		final Radio radio = new Radio() {
+	public static Radio createRadio(String eventId, final Map info,
+			final String infoKey, final String infoValue, CoreIC core) {
 
-			@Override
-			public void focus() {
-				if (rendered) {
-					getFocusEl().focus();
-					onFocus(new FieldEvent(this));
-				}
-			}
+		final Radio radio = new gkRadio() {
 
 			@Override
 			protected void onFocus(ComponentEvent ce) {
 				if (!hasFocus) {
 					if (!readOnly) {
-						// 更新form的info資料
-						core.getBus().publish(
-								new EventObject(eventId + "-radio", new gkMap(
-										infoKey, infoValue)));
-						// 設定相同name的radio資料
-						core.getBus().publish(
-								new EventObject(eventId, new gkMap(infoKey,
-										infoValue)));
+						info.put(infoKey, infoValue);
 					}
 					super.onFocus(ce);
 				}
 			}
-
-			@Override
-			protected void onClick(ComponentEvent be) {
-				// if we click the boxLabel, the browser fires an own click
-				// event
-				// automatically, so we ignore one of it
-				if (boxLabelEl != null
-						&& boxLabelEl.dom.isOrHasChild(be.getTarget())) {
-					return;
-				}
-				if (readOnly) {
-					be.stopEvent();
-					return;
-				}
-				setValue(true);
-				fireEvent(Events.Select, be);
-			}
-
-			@Override
-			public void setValue(Boolean value) {
-				if (!hasFocus && value) {
-					// 由於可能不經過滑鼠的點選動作來設值，所以這裡更新info
-					info.put(infoKey, infoValue);
-				}
-				super.setValue(value);
-			}
 		};
-
-		core.subscribe(eventId + "-radio", new EventProcess() {
-
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				Map infoMap = eo.getInfoMap();
-				if (infoMap.containsKey(infoKey)) {
-					if (infoValue.equals(infoMap.get(infoKey))) {
-						info.put(infoKey, infoValue);
-					} else {
-						String value = (String) info.get(infoKey);
-						if (value != null && value.equals(infoValue)) {
-							info.put(infoKey, "");
-						}
-					}
-				}
-			}
-		});
 
 		core.subscribe(eventId, new EventProcess() {
 
@@ -186,12 +128,33 @@ public class BindingUtils {
 				if (infoMap.containsKey(infoKey)) {
 					Object value = infoMap.get(infoKey);
 					radio.setValue(infoValue.equals(value));
+					info.put(infoKey, value);
 				}
 			}
 		});
 
-		addListener(Events.Change, radio, infoKey, info);
-		initialInfoValue(radio, infoKey, info, "");
+		radio.addListener(Events.Change, new Listener<FieldEvent>() {
+
+			@Override
+			public void handleEvent(FieldEvent fe) {
+				updateDirtyField(infoKey, info);
+				Boolean value = (Boolean) fe.getField().getValue();
+				Object currentValue = info.get(infoKey);
+				if (value != null && value) {
+					if (!infoValue.equals(currentValue)) {
+						info.put(infoKey, infoValue);
+					}
+				} else {
+					if (infoValue.equals(currentValue)) {
+						info.put(infoKey, "");
+					}
+				}
+			}
+		});
+
+		if (info.get(infoKey) == null) {
+			initialInfoValue(radio, infoKey, info, "");
+		}
 		return radio;
 	}
 
@@ -265,11 +228,13 @@ public class BindingUtils {
 				if (infoMap.containsKey(infoKey)) {
 					Object value = infoMap.get(infoKey);
 					ModelData md = null;
-					if (value instanceof String) {
-						md = cb.getPropertyEditor().convertStringValue(
-								(String) value);
-					} else {
+					if (value instanceof ModelData) {
 						md = (ModelData) value;
+					} else {
+						if (value != null) {
+							md = cb.getPropertyEditor().convertStringValue(
+									value.toString());
+						}
 					}
 					cb.setValue(md);
 					info.put(infoKey, md == null ? "" : md.get("value"));
@@ -301,55 +266,6 @@ public class BindingUtils {
 		return cb;
 	}
 
-	public static gkListFieldIC createListFieldIC(String eventId,
-			final Map info, final String infoKey, CoreIC core) {
-
-		final gkListFieldIC lf = new gkListFieldIC();
-
-		core.subscribe(eventId, new EventProcess() {
-
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				Map infoMap = eo.getInfoMap();
-				if (infoMap.containsKey(infoKey)) {
-					Object value = infoMap.get(infoKey);
-					if (value == null) {
-						return;
-					}
-					// 后端传来的资料可以是：List 和 String[] 两种形式
-					if (value instanceof List) {
-						lf.setSelectItem((List) value);
-						info.put(infoKey, value);
-					}
-					if (value instanceof String[]) {
-						lf.setSelectItem((String[]) value);
-					}
-				}
-			}
-		});
-
-		lf.addSelectionChangedListener(new SelectionChangedListener<ModelData>() {
-
-			@Override
-			public void selectionChanged(SelectionChangedEvent<ModelData> se) {
-
-				List selectlist = se.getSelection();
-				if (selectlist != null) {
-					// .若 selectedItem 有改變時 才填入 dirtyField
-					updateDirtyField(infoKey, info);
-					// .因應 eventId_infoChange 事件，應該設定 dirtyField
-					// 最後才info.put()
-					info.put(infoKey, selectlist);
-				}
-			}
-		});
-
-		addListener(Events.Change, lf, infoKey, info);
-		initialInfoValue(lf, infoKey, info, new gkList());
-
-		return lf;
-	}
-
 	/**
 	 * 建立DateField，此物件的資訊將放在info物件指定的infoKey
 	 * 
@@ -363,7 +279,7 @@ public class BindingUtils {
 	public static gkDateField createDateField(String eventId, final Map info,
 			final String infoKey, String format, CoreIC core) {
 
-		final gkDateField df = new gkDateField(format);
+		gkDateField df = new gkDateField();
 
 		core.subscribe(eventId, new EventProcess() {
 
@@ -371,14 +287,8 @@ public class BindingUtils {
 			public void execute(String eventId, EventObject eo) {
 				Map infoMap = eo.getInfoMap();
 				if (infoMap.containsKey(infoKey)) {
-					String value = (String) infoMap.get(infoKey);
-					if (value != null && !value.equals("")) {
-						df.setUseDate(value);
-						info.put(infoKey, df.getUseDate());
-					} else {
-						// 選項欄位value為空時清除欄位中的顯示（當通過事件設定欄位value為空時欄位無法自行設定顯示為空需通過此邏輯清除欄位中的顯示）
-						df.clear();
-					}
+					Object value = infoMap.get(infoKey);
+					info.put(infoKey, value == null ? "" : value);
 				}
 			}
 		});
@@ -392,7 +302,7 @@ public class BindingUtils {
 	public static gkYMField createYMField(String eventId, final Map info,
 			final String infoKey, String format, CoreIC core) {
 
-		final gkYMField yf = new gkYMField(format);
+		gkYMField yf = new gkYMField();
 
 		core.subscribe(eventId, new EventProcess() {
 
@@ -400,14 +310,8 @@ public class BindingUtils {
 			public void execute(String eventId, EventObject eo) {
 				Map infoMap = eo.getInfoMap();
 				if (infoMap.containsKey(infoKey)) {
-					String value = (String) infoMap.get(infoKey);
-					if (value != null && !value.equals("")) {
-						yf.setUseDate(value);
-						info.put(infoKey, yf.getUseDate());
-					} else {
-						// 選項欄位value為空時清除欄位中的顯示（當通過事件設定欄位value為空時欄位無法自行設定顯示為空需通過此邏輯清除欄位中的顯示）
-						yf.clear();
-					}
+					Object value = infoMap.get(infoKey);
+					info.put(infoKey, value == null ? "" : value);
 				}
 			}
 		});
@@ -428,7 +332,7 @@ public class BindingUtils {
 	 * @param core
 	 * @return CheckBox
 	 */
-	public static CheckBox createCheckBox(final String eventId, final Map info,
+	public static CheckBox createCheckBox(String eventId, final Map info,
 			final String infoKey, final String infoValue, CoreIC core) {
 
 		final CheckBox cb = new CheckBox() {
@@ -436,20 +340,23 @@ public class BindingUtils {
 			@Override
 			public void setValue(Boolean b) {
 				super.setValue(b);
-				List cbList = (List) info.get(infoKey);
-				if (b != null && b) {
-					// 如果是true而且不在cbList裡面，表示狀態更新了
-					if (!cbList.contains(infoValue)) {
-						cbList.add(infoValue);
-						// 透過put發布InfoChange事件
-						info.put(infoKey, cbList);
-					}
-				} else {
-					// 如果在cbList裡面，表示狀態更新了
-					if (cbList.contains(infoValue)) {
-						cbList.remove(infoValue);
-						// 透過put發布InfoChange事件
-						info.put(infoKey, cbList);
+				Object value = info.get(infoKey);
+				if (value instanceof List) {
+					List cbList = (List) value;
+					if (b != null && b) {
+						// 如果是true而且不在cbList裡面，表示狀態更新了
+						if (!cbList.contains(infoValue)) {
+							cbList.add(infoValue);
+							// 透過put發布InfoChange事件
+							info.put(infoKey, cbList);
+						}
+					} else {
+						// 如果在cbList裡面，表示狀態更新了
+						if (cbList.contains(infoValue)) {
+							cbList.remove(infoValue);
+							// 透過put發布InfoChange事件
+							info.put(infoKey, cbList);
+						}
 					}
 				}
 			}
@@ -457,7 +364,6 @@ public class BindingUtils {
 			@Override
 			protected void onClick(ComponentEvent ce) {
 				super.onClick(ce);
-
 				if ((boxLabelEl != null && boxLabelEl.dom.isOrHasChild(ce
 						.getTarget())) || readOnly) {
 					return;
@@ -678,11 +584,11 @@ public class BindingUtils {
 				updateDirtyField(infoKey, info);
 				if (field instanceof TextField || field instanceof LabelField
 						|| field instanceof SliderField) {
-					Object value;
-					if (field instanceof gkDateField) {
-						value = ((gkDateField) field).getUseDate();
-					} else {
-						value = field.getValue();
+					Object value = field.getValue();
+					if (value != null) {
+						if (field instanceof gkDateField) {
+							value = DateTimeUtils.formatDate((Date) value);
+						}
 					}
 					// 因應eventId_infoChange事件，應該設定dirtyField最後才info.put()
 					info.put(infoKey, value == null ? "" : value);

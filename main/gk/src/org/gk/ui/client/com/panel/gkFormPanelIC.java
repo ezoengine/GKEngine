@@ -20,19 +20,14 @@ import java.util.List;
 import java.util.Map;
 
 import jfreecode.gwt.event.client.bus.EventObject;
-import jfreecode.gwt.event.client.bus.EventProcess;
 
+import org.gk.ui.client.binding.gkFieldBinding;
+import org.gk.ui.client.binding.gkFormBinding;
 import org.gk.ui.client.com.CoreIC;
 import org.gk.ui.client.com.IC;
-import org.gk.ui.client.com.form.gkDateField;
 import org.gk.ui.client.com.form.gkFormPanel;
-import org.gk.ui.client.com.form.gkFormRow;
 import org.gk.ui.client.com.form.gkList;
-import org.gk.ui.client.com.form.gkListFieldIC;
 import org.gk.ui.client.com.form.gkMap;
-import org.gk.ui.client.com.form.gkTextField;
-import org.gk.ui.client.com.form.gkTimeField;
-import org.gk.ui.client.com.form.gkYMField;
 import org.gk.ui.client.com.utils.BindingUtils;
 
 import com.extjs.gxt.ui.client.Style;
@@ -41,38 +36,17 @@ import com.extjs.gxt.ui.client.event.Events;
 import com.extjs.gxt.ui.client.widget.Component;
 import com.extjs.gxt.ui.client.widget.Container;
 import com.extjs.gxt.ui.client.widget.form.AdapterField;
-import com.extjs.gxt.ui.client.widget.form.CheckBox;
-import com.extjs.gxt.ui.client.widget.form.ComboBox;
 import com.extjs.gxt.ui.client.widget.form.Field;
-import com.extjs.gxt.ui.client.widget.form.FormPanel.LabelAlign;
-import com.extjs.gxt.ui.client.widget.form.LabelField;
-import com.extjs.gxt.ui.client.widget.form.NumberField;
-import com.extjs.gxt.ui.client.widget.form.Radio;
-import com.extjs.gxt.ui.client.widget.form.TextField;
 
 /**
- * <title>表單元件</title>
+ * 自定表單元件
  * 
- * <pre>
- * 表單元件可使用gkFormRow排版，提供 setInfo , getInfo 取得所有欄位
- * 的值。每個欄位需透過此類別的 createXXXField方法建立，這樣才能binding
- * 該欄位，自動驗證欄位是否合法。
- * 目前提供的建立欄位有
- * TextField , NumberField , LabelField , Radio
- * CheckBox , FileUpload , ComboBox , TextArea
- * DateField , TimeField 
- * -=-=-=-=-
- *   事件清單
- * -=-=-=-=-
- * setInfo 設定所有欄位資訊
- * getInfo 取得所有欄位資訊
- * infoChange 欄位值變更通知
- * </pre>
- * 
- * @author I21890,張明龍、呂毓閔、黃國峰
+ * @author I21890、I23250
  * @since 2009/07/06
  */
 public abstract class gkFormPanelIC extends gkFormPanel implements IC {
+
+	protected gkFormBinding formBinding;
 
 	protected CoreIC core;
 
@@ -85,31 +59,12 @@ public abstract class gkFormPanelIC extends gkFormPanel implements IC {
 	 * 此元件IC擁有的事件清單
 	 */
 	public static interface Event {
-		public final static String LOADED = ".loaded";
-		public final static String SET_INFO = ".setInfo";
 		public final static String INFO_CHANGE = ".infoChange";
-		public final static String EDIT_FIELD = ".editField";
 		public final static String DIRTY_FIELD = ".dirtyField";
-	}
-
-	public String evtLoaded() {
-		return getId() + Event.LOADED;
-	}
-
-	public String evtSetInfo() {
-		return getId() + Event.SET_INFO;
 	}
 
 	public String evtInfoChange() {
 		return getId() + Event.INFO_CHANGE;
-	}
-
-	public String evtEditField() {
-		return getId() + Event.EDIT_FIELD;
-	}
-
-	public String evtDirtyField() {
-		return getId() + Event.DIRTY_FIELD;
 	}
 
 	/**
@@ -127,18 +82,7 @@ public abstract class gkFormPanelIC extends gkFormPanel implements IC {
 		}
 	};
 
-	protected List dirtyList = new gkList() {
-		private static final long serialVersionUID = 7938387831522388517L;
-
-		@Override
-		public boolean add(Object e) {
-			boolean rtnBoolean = super.add(e);
-			// 發佈dirtyField List資料
-			core.getBus().publish(
-					new EventObject(evtDirtyField(), e.toString()));
-			return rtnBoolean;
-		}
-	};
+	protected List dirtyList = new gkList();
 
 	protected ModelData outerModelData;
 
@@ -180,30 +124,14 @@ public abstract class gkFormPanelIC extends gkFormPanel implements IC {
 		}
 	}
 
-	/**
-	 * 訂閱 setInfo事件，設定所有欄位資訊
-	 */
 	@Override
 	public void bindEvent() {
-		core.subscribe(evtSetInfo(), new EventProcess() {
 
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				Map info = eo.getInfoMap();
-				putInfo(info);
-				// 更新所有欄位後，清掉dirty標記
-				dirtyClean();
-				// 發佈給ExprField事件
-				core.getBus().publish(new EventObject(evtLoaded(), info));
-			}
-		});
 	}
 
 	protected void init() {
+		formBinding = new gkFormBinding();
 		info.put(Event.DIRTY_FIELD, dirtyList);
-		setHeaderVisible(false);
-		setLabelAlign(LabelAlign.RIGHT);
-		setBodyBorder(false);
 		setPadding(0);
 		setFieldWidth(Style.DEFAULT);
 		addField();
@@ -221,39 +149,17 @@ public abstract class gkFormPanelIC extends gkFormPanel implements IC {
 		return info;
 	}
 
-	/**
-	 * 當AP呼叫此方法更新info時，需通知所有欄位進行更新
-	 * 
-	 * @param info
-	 */
-	public void putInfo(Map info) {
-		core.getBus().publish(new EventObject(getId(), info));
-	}
-
-	/**
-	 * 當AP呼叫此方法更新info時，需通知所有欄位進行更新
-	 * 
-	 * @param key
-	 * @param value
-	 */
-	public void putInfo(String key, Object value) {
-		info.put(key, value);
-		core.getBus().publish(new EventObject(getId(), info));
-	}
-
 	@Override
 	public void setInfo(Object info) {
-		setInfo((Map) info);
+		if (info instanceof Map) {
+			setInfo((Map) info);
+		}
 	}
 
-	/**
-	 * 如果傳進來的Map是null或size=0的就不進行處理
-	 * 
-	 * @param info
-	 */
-	public void setInfo(Map info) {
+	private void setInfo(Map info) {
+		// 如果傳進來的Map是null或size=0的就不進行處理
 		if (info != null && !info.isEmpty()) {
-			core.getBus().publish(new EventObject(getId(), info));
+			formBinding.publish(info);
 		}
 	}
 
@@ -296,122 +202,26 @@ public abstract class gkFormPanelIC extends gkFormPanel implements IC {
 		}
 	}
 
-	public TextField createTextField(String key) {
-		TextField tf = new gkTextField();
-		fieldBinding(tf, key);
-		return tf;
-	}
-
-	public NumberField createNumberField(String key) {
-		return BindingUtils.createNumberField(getId(), info, key, core);
-	}
-
-	/**
-	 * 建立 LabelField
-	 * 
-	 * @param key
-	 * @return LabelField
-	 */
-	public LabelField createLabelField(String key) {
-		return BindingUtils.createLabelField(getId(), info, key, core);
-	}
-
-	public gkDateField createDateField(String key, String format) {
-		return BindingUtils.createDateField(getId(), info, key, format, core);
-	}
-
-	public gkYMField createYMField(String key, String format) {
-		return BindingUtils.createYMField(getId(), info, key, format, core);
-	}
-
-	public Radio createRadio(String key, String value) {
-		return BindingUtils.createRadio(getId(), info, key, value, core);
-	}
-
-	public CheckBox createCheckBox(String key, String value) {
-		return BindingUtils.createCheckBox(getId(), info, key, value, core);
-	}
-
-	public ComboBox createComboBox(String key) {
-		return BindingUtils.createComboBox(getId(), info, key, core);
-	}
-
-	/**
-	 * 建立ListFieldIC
-	 * 
-	 * @param key
-	 * @return gkListFieldIC
-	 */
-	public gkListFieldIC createListFieldIC(String key) {
-		return BindingUtils.createListFieldIC(getId(), info, key, core);
-	}
-
-	public gkTimeField createTimeField(String key) {
-		return BindingUtils.createTimeField(getId(), info, key, core);
-	}
-
+	@Deprecated
 	public void fieldBinding(Field field, gkFieldAccessIfc access) {
 		BindingUtils.binding(getId(), field, info, access, core);
 	}
 
 	/**
-	 * 欄位binding
+	 * 加入欄位binding
 	 * 
-	 * @param field
-	 * @param infoKey
+	 * @param fieldBinding
 	 */
-	public void fieldBinding(Field field, String infoKey) {
-		BindingUtils.binding(getId(), field, infoKey, info, core);
+	public void addFieldBinding(gkFieldBinding fieldBinding) {
+		formBinding.addFieldBinging(fieldBinding);
 	}
 
 	/**
-	 * 清除dirtyFieldList內容
+	 * 清空Dirty Field
 	 */
-	public void dirtyClean() {
+	public void cleanDirtyField() {
 		if (info.containsKey(Event.DIRTY_FIELD)) {
 			((List) info.get(Event.DIRTY_FIELD)).clear();
 		}
-	}
-
-	/**
-	 * 新增formRow
-	 * 
-	 * @return gkFormRow
-	 */
-	public gkFormRow createRow() {
-		return createRow("");
-	}
-
-	/**
-	 * 新增formRow
-	 * 
-	 * @param labelAlign
-	 * @return gkFormRow
-	 */
-	public gkFormRow createRow(String labelAlign) {
-		return new gkFormRow(labelAlign);
-	}
-
-	/**
-	 * 將傳進來的元件進行binding
-	 * 
-	 * @param key
-	 * @param ic
-	 */
-	public void icBinding(final String key, final IC ic) {
-		core.subscribe(getId(), new EventProcess() {
-
-			@Override
-			public void execute(String eventId, EventObject eo) {
-				if (!eo.getInfoMap().containsKey(key)) {
-					return;
-				}
-				String value = (String) eo.getInfoMap().get(key);
-				ic.setInfo(value);
-				info.put(key, value);
-			}
-		});
-		ic.linkInfo(info);
-		info.put(key, ic.getInfo());
 	}
 }
